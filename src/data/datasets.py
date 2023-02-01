@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 from torch import Tensor
 from torch.utils.data import Dataset, DataLoader, default_collate
@@ -105,15 +105,21 @@ def group_collate_fn(batch: List[Tuple[Any, ...]]):
 def get_rsna_dataloaders(rsna_dir: str,
                          batch_size: int,
                          img_size: int,
-                         num_workers: int = 4,
-                         male_percent: float = 0.5,
-                         train_age: str = 'avg'):
+                         protected_attr: str,
+                         num_workers: Optional[int] = 4,
+                         male_percent: Optional[float] = 0.5,
+                         train_age: Optional[str] = 'avg'):
     """
     Returns dataloaders for the RSNA dataset.
     """
     # Load filenames and labels
-    filenames, labels, meta = load_rsna_age_split(rsna_dir, train_age=train_age)
-    # filenames, labels, meta = load_rsna_gender_split(rsna_dir, male_percent=male_percent)
+    if protected_attr == 'age':
+        filenames, labels, meta = load_rsna_age_split(rsna_dir, train_age=train_age)
+    elif protected_attr == 'sex':
+        filenames, labels, meta = load_rsna_gender_split(rsna_dir, male_percent=male_percent)
+    else:
+        raise ValueError(f'Unknown protected attribute: {protected_attr}')
+
     train_filenames = filenames['train']
     train_meta = meta['train']
     anomaly = 'lungOpacity'  # 'otherAnomaly'

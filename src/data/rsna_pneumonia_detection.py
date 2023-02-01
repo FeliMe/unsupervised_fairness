@@ -2,6 +2,7 @@ import os
 from glob import glob
 from tqdm import tqdm
 
+import kaggle
 import numpy as np
 import pandas as pd
 import pydicom as dicom
@@ -13,6 +14,16 @@ CLASS_MAPPING = {
     'Lung Opacity': 1,  # 6012, female: 2502, male: 3510, age mean: 45.58, std: 17.46, min: 1, max: 92
     'No Lung Opacity / Not Normal': 2  # 11821, female: 5111, male: 6710, age mean: 49.33, std: 16.49, min: 1, max: 153
 }
+
+
+def download_rsna(rsna_dir: str = RSNA_DIR):
+    """Downloads the RSNA dataset."""
+    kaggle.api.authenticate()
+    kaggle.api.dataset_download_files(
+        'kmader/rsna-pneumonia-detection-challenge',
+        path=rsna_dir,
+        unzip=True
+    )
 
 
 def extract_metadata(rsna_dir: str = RSNA_DIR):
@@ -281,5 +292,5 @@ def load_rsna_age_split(rsna_dir: str = RSNA_DIR, train_age: float = 'avg'):
 
 
 if __name__ == '__main__':
-    # extract_metadata()
-    pass
+    download_rsna()
+    extract_metadata()
