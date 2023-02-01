@@ -1,0 +1,7 @@
+__pycache__/
+**tester.py
+run_fae_age.sh
+run_fae_gender.sh
+.vscode/
+*.egg-info
+logs
