@@ -285,7 +285,7 @@ class FeatureReconstructor(nn.Module):
     def loss(self, x: Tensor):
         feats, rec = self(x)
         loss = self.loss_fn(rec, feats).mean()
-        return {'rec_loss': loss}
+        return {'loss': loss, 'rec_loss': loss}
 
     def predict_anomaly(self, x: Tensor):
         """Returns per image anomaly maps and anomaly scores"""

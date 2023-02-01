@@ -9,9 +9,10 @@ import torch
 
 import wandb
 
-from src.models.model import FeatureReconstructor
 from src.data.datasets import get_rsna_dataloaders
 from src.data.rsna_pneumonia_detection import RSNA_DIR
+from src.models.FAE.fae import FeatureReconstructor
+from src.models.RD.reverse_distillation import ReverseDistillation
 from src.utils.metrics import build_metrics, AvgDictMeter
 from src.utils.utils import seed_everything
 
@@ -25,6 +26,8 @@ parser.add_argument('--debug', action='store_true', help='Debug mode')
 
 # Data settings
 parser.add_argument('--data_dir', type=str, default=RSNA_DIR)
+parser.add_argument('--protected_attr', type=str, default='age',
+                    choices=['age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--train_age', type=str, default='avg',
                     choices=['young', 'avg', 'old'])
@@ -56,6 +59,8 @@ parser.add_argument('--max_steps', type=int, default=10000,
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
+parser.add_argument('--model_type', type=str, default='RD',
+                    choices=['FAE', 'RD'])
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
                     help='Autoencoder hidden dimensions')
@@ -88,14 +93,17 @@ seed_everything(config.seed)
 
 
 print("Initializing model...")
-model = FeatureReconstructor(config).to(config.device)
+if config.model_type == 'FAE':
+    model = FeatureReconstructor(config)
+elif config.model_type == 'RD':
+    model = ReverseDistillation()
+else:
+    raise ValueError(f'Unknown model type {config.model_type}')
+model = model.to(config.device)
 
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
                              weight_decay=config.weight_decay)
-# Print model
-# print(model.enc)
-# print(model.dec)
 
 # Init metrics
 metrics = build_metrics()
@@ -111,6 +119,7 @@ train_loader, val_loader, _ = get_rsna_dataloaders(
     batch_size=config.batch_size,
     img_size=config.img_size,
     num_workers=config.num_workers,
+    protected_attr=config.protected_attr,
     male_percent=config.male_percent,
     train_age=config.train_age,
 )
@@ -125,6 +134,7 @@ wandb.init(
     entity='felix-meissen',
     dir=config.log_dir,
     name=config.log_dir.lstrip('logs/'),
+    tags=[config.model_type, config.protected_attr],
     config=config,
     mode="disabled" if config.debug else "online"
 )
@@ -135,7 +145,7 @@ def train_step(model, optimizer, x, device):
     optimizer.zero_grad()
     x = x.to(device)
     loss_dict = model.loss(x)
-    loss = loss_dict['rec_loss']
+    loss = loss_dict['loss']
     loss.backward()
     optimizer.step()
     return loss_dict
