@@ -11,6 +11,7 @@ import wandb
 
 from src.data.datasets import get_rsna_dataloaders
 from src.data.rsna_pneumonia_detection import RSNA_DIR
+from src.models.DeepSVDD.deepsvdd import DeepSVDD
 from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
 from src.utils.metrics import build_metrics, AvgDictMeter
@@ -54,13 +55,14 @@ parser.add_argument(
 parser.add_argument('--lr', type=float, default=2e-4, help='Learning rate')
 parser.add_argument('--weight_decay', type=float, default=0.0,
                     help='Weight decay')
-parser.add_argument('--max_steps', type=int, default=10000,
+parser.add_argument('--max_steps', type=int, default=8000,  # 10000
                     help='Number of training steps')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='RD',
-                    choices=['FAE', 'RD'])
+parser.add_argument('--model_type', type=str, default='DeepSVDD',
+                    choices=['FAE', 'RD', 'DeepSVDD'])
+# FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
                     help='Autoencoder hidden dimensions')
@@ -71,6 +73,9 @@ parser.add_argument('--extractor_cnn_layers', type=str, nargs='+',
                     default=['layer0', 'layer1', 'layer2'])
 parser.add_argument('--keep_feature_prop', type=float, default=1.0,
                     help='Proportion of ResNet features to keep')
+# DeepSVDD settings
+parser.add_argument('--repr_dim', type=int, default=256,
+                    help='Dimensionality of the hypersphere c')
 
 config = parser.parse_args()
 
@@ -97,6 +102,8 @@ if config.model_type == 'FAE':
     model = FeatureReconstructor(config)
 elif config.model_type == 'RD':
     model = ReverseDistillation()
+elif config.model_type == 'DeepSVDD':
+    model = DeepSVDD(config)
 else:
     raise ValueError(f'Unknown model type {config.model_type}')
 model = model.to(config.device)
@@ -201,7 +208,9 @@ def val_step(model, x, device):
         loss_dict = model.loss(x)
         anomaly_map, anomaly_score = model.predict_anomaly(x)
     x = x.cpu()
-    return loss_dict, anomaly_map.cpu(), anomaly_score.cpu()
+    anomaly_score = anomaly_score.cpu() if anomaly_score is not None else None
+    anomaly_map = anomaly_map.cpu() if anomaly_map is not None else None
+    return loss_dict, anomaly_map, anomaly_score
 
 
 def validate(model, val_loader, device, step):
