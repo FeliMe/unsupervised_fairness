@@ -49,7 +49,7 @@ class DeepSVDD(nn.Module):
         )
 
         # hypersphere center c
-        self.register_buffer('c', torch.randn(1, self.repr_dim) + 100)
+        self.register_buffer('c', torch.randn(1, self.repr_dim) + 10)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # if x.shape[1] == 1:

@@ -78,15 +78,22 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR):
     test_oa = pd.concat([test_normal, test_oa]).sample(frac=1, random_state=42).reset_index(drop=True)
 
     # Return
-    result = {}
+    filenames = {}
+    labels = {}
+    meta = {}
+    sets = {
+        'train': train,
+        'val/lungOpacity': val_lo,
+        'val/otherAnomaly': val_oa,
+        'test/lungOpacity': test_lo,
+        'test/otherAnomaly': test_oa,
+    }
     img_dir = os.path.join(rsna_dir, 'stage_2_train_images')
-    modes = ['train', 'val_lungOpacity', 'val_anomalOther', 'test_lungOpacity', 'test_anomalOther']
-    sets = [train, val_lo, val_oa, test_lo, test_oa]
-    for mode, data in zip(modes, sets):
-        filenames = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
-        labels = [min(1, label) for label in data.label.values]
-        result[mode] = (filenames, labels, data.PatientSex.values)
-    return result
+    for mode, data in sets.items():
+        filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.zeros_like(data['PatientSex'].values)
+    return filenames, labels, meta
 
 
 def load_rsna_gender_split(rsna_dir: str = RSNA_DIR, male_percent: float = 0.5):

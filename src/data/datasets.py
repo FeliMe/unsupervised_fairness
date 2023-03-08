@@ -1,12 +1,14 @@
 from functools import partial
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from torch import Tensor
-from torch.utils.data import Dataset, DataLoader, default_collate
+from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
 from src.data.data_utils import load_dicom_img
-from src.data.rsna_pneumonia_detection import load_rsna_age_split, load_rsna_gender_split
+from src.data.rsna_pneumonia_detection import (load_rsna_age_split,
+                                               load_rsna_gender_split,
+                                               load_rsna_naive_split)
 
 
 class NormalDataset(Dataset):
@@ -15,13 +17,13 @@ class NormalDataset(Dataset):
     Receives a list of filenames
     """
 
-    def __init__(self, filenames: List[str], gender: List[str], transform=None):
+    def __init__(self, filenames: List[str], meta: List[str], transform=None):
         """
         :param filenames: Paths to training images
         :param gender:
         """
         self.filenames = filenames
-        self.gender = gender
+        self.meta = meta
         self.transform = transform
 
     def __len__(self) -> int:
@@ -30,36 +32,8 @@ class NormalDataset(Dataset):
     def __getitem__(self, idx: int) -> Tensor:
         img = load_dicom_img(self.filenames[idx])
         img = self.transform(img)
-        gender = self.gender[idx]
-        return img, gender
-
-
-class AnomalDataset(Dataset):
-    """
-    Anomaly detection test dataset.
-    Receives a list of filenames and a list of class labels (0 == normal).
-    """
-    def __init__(self, filenames: List[str], labels: List[int], gender: List[Dict], transform=None):
-        """
-        :param filenames: Paths to images
-        :param labels: Class labels (0 == normal, other == anomaly)
-        :param gender: Metadata (age and gender)
-        """
-        super().__init__()
-        self.filenames = filenames
-        self.labels = labels
-        self.gender = gender
-        self.transform = transform
-
-    def __len__(self) -> int:
-        return len(self.filenames)
-
-    def __getitem__(self, idx: int) -> Tuple[Tensor, int]:
-        img = load_dicom_img(self.filenames[idx])
-        img = self.transform(img)
-        label = self.labels[idx]
-        gender = self.gender[idx]
-        return img, label, gender
+        meta = self.meta[idx]
+        return img, meta
 
 
 class AnomalFairnessDataset(Dataset):
@@ -113,7 +87,9 @@ def get_rsna_dataloaders(rsna_dir: str,
     Returns dataloaders for the RSNA dataset.
     """
     # Load filenames and labels
-    if protected_attr == 'age':
+    if protected_attr == 'none':
+        filenames, labels, meta = load_rsna_naive_split(rsna_dir)
+    elif protected_attr == 'age':
         filenames, labels, meta = load_rsna_age_split(rsna_dir, train_age=train_age)
     elif protected_attr == 'sex':
         filenames, labels, meta = load_rsna_gender_split(rsna_dir, male_percent=male_percent)

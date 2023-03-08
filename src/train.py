@@ -6,11 +6,14 @@ from datetime import datetime
 from time import time
 
 import torch
+import torch.nn as nn
+from torch import Tensor
 
 import wandb
 
 from src.data.datasets import get_rsna_dataloaders
 from src.data.rsna_pneumonia_detection import RSNA_DIR
+from src.models.CAVGA.cavga_ru import CAVGA_Ru
 from src.models.DeepSVDD.deepsvdd import DeepSVDD
 from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
@@ -27,8 +30,8 @@ parser.add_argument('--debug', action='store_true', help='Debug mode')
 
 # Data settings
 parser.add_argument('--data_dir', type=str, default=RSNA_DIR)
-parser.add_argument('--protected_attr', type=str, default='age',
-                    choices=['age', 'sex'])
+parser.add_argument('--protected_attr', type=str, default='sex',
+                    choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--train_age', type=str, default='avg',
                     choices=['young', 'avg', 'old'])
@@ -43,6 +46,8 @@ parser.add_argument('--val_steps', type=int, default=50,
                     help='Steps per validation')
 parser.add_argument('--log_frequency', type=int, default=50,
                     help='Logging frequency')
+parser.add_argument('--log_img_freq', type=int, default=1000)
+parser.add_argument('--num_imgs_log', type=int, default=8)
 parser.add_argument(
     '--log_dir', type=str, help="Logging directory",
     default=os.path.join(
@@ -60,8 +65,8 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='DeepSVDD',
-                    choices=['FAE', 'RD', 'DeepSVDD'])
+parser.add_argument('--model_type', type=str, default='CAVGA_Ru',
+                    choices=['FAE', 'RD', 'DeepSVDD', 'CAVGA_Ru'])
 # FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
@@ -104,6 +109,8 @@ elif config.model_type == 'RD':
     model = ReverseDistillation()
 elif config.model_type == 'DeepSVDD':
     model = DeepSVDD(config)
+elif config.model_type == 'CAVGA_Ru':
+    model = CAVGA_Ru()
 else:
     raise ValueError(f'Unknown model type {config.model_type}')
 model = model.to(config.device)
@@ -111,9 +118,6 @@ model = model.to(config.device)
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
                              weight_decay=config.weight_decay)
-
-# Init metrics
-metrics = build_metrics()
 
 
 """"""""""""""""""""""""""""""""" Load data """""""""""""""""""""""""""""""""
@@ -131,6 +135,9 @@ train_loader, val_loader, _ = get_rsna_dataloaders(
     train_age=config.train_age,
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
+
+x, y = next(iter(val_loader))
+sub_groups = list(x.keys())
 
 
 """"""""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""""
@@ -186,7 +193,7 @@ def train(model, optimizer, train_loader, val_loader, config):
                 train_losses.reset()
 
             if step % config.val_frequency == 0:
-                validate(model, val_loader, config.device, step)
+                validate(config, model, val_loader, config.device, step)
 
             if step >= config.max_steps:
                 print(f'Reached {config.max_steps} iterations.',
@@ -194,14 +201,14 @@ def train(model, optimizer, train_loader, val_loader, config):
 
                 # Final validation
                 print("Final validation...")
-                validate(model, val_loader, config.device, step)
+                validate(config, model, val_loader, config.device, step)
                 return
 
         i_epoch += 1
         print(f'Finished epoch {i_epoch}, ({step} iterations)')
 
 
-def val_step(model, x, device):
+def val_step(model: nn.Module, x: Tensor, device):
     model.eval()
     x = x.to(device)
     with torch.no_grad():
@@ -213,33 +220,54 @@ def val_step(model, x, device):
     return loss_dict, anomaly_map, anomaly_score
 
 
-def validate(model, val_loader, device, step):
+def validate(config, model, val_loader, device, step):
     i_val_step = 0
-    metrics = defaultdict(build_metrics)
+    metrics = build_metrics(sub_groups)
     val_losses = defaultdict(AvgDictMeter)
+    imgs = defaultdict(list)
+    anomaly_scores = defaultdict(list)
+    anomaly_maps = defaultdict(list)
+    log_imgs = step % config.log_img_freq == 0
 
     for x, y in val_loader:
         # x, y, anomaly_map: [b, 1, h, w]
         # Compute loss, anomaly map and anomaly score
-        for k in x.keys():
-            loss_dict, _, anomaly_score = val_step(model, x[k], device)
-            val_losses[k].add(loss_dict)
+        for i, k in enumerate(x.keys()):
+            loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], device)
+
+            # TODO: Compute common threshold for 5%FPR over all val sets.
+            # TODO: Compute TPR, Positive Rate and accuracy from this
 
             # Update metrics
-            metrics[k].update(anomaly_score, y[k])
+            group = torch.tensor([i] * len(anomaly_score))
+            scores_and_group = torch.stack([anomaly_score, group], dim=1)
+            metrics.update(scores_and_group, y[k])
+            val_losses[k].add(loss_dict)
+            anomaly_scores[k].append(anomaly_score)
+
+            imgs[k].append(x[k])
+            if anomaly_map is not None:
+                anomaly_maps[k].append(anomaly_map)
+            else:
+                log_imgs = False
 
         i_val_step += 1
         if i_val_step >= config.val_steps:
             break
 
     # Compute and flatten metrics and losses
-    metrics_c = {k: v.compute() for k, v in metrics.items()}
-    metrics_c = {f'{k}_{m}': v[m] for k, v in metrics_c.items() for m in v.keys()}
+    metrics_c = metrics.compute()
+    val_anomaly_scores = {f'{k}_anomaly_scores': torch.cat(v).mean() for k, v in anomaly_scores.items()}
     val_losses_c = {k: v.compute() for k, v in val_losses.items()}
     val_losses_c = {f'{k}_{m}': v[m] for k, v in val_losses_c.items() for m in v.keys()}
+    if log_imgs:
+        val_imgs = {f'{k}_imgs': wandb.Image(torch.cat(v)[:config.num_imgs_log]) for k, v in imgs.items()}
+        val_anomaly_maps = {f'{k}_anomaly_maps': wandb.Image(torch.cat(v)[:config.num_imgs_log]) for k, v in anomaly_maps.items()}
+        imgs_log = {**val_imgs, **val_anomaly_maps}
+        wandb.log(imgs_log, step=step)
 
     # Compute metrics
-    val_results = {**metrics_c, **val_losses_c}
+    val_results = {**metrics_c, **val_losses_c, **val_anomaly_scores}
 
     # Print validation results
     print("\nValidation results:")
