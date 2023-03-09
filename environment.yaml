@@ -20,6 +20,8 @@ dependencies:
   - tqdm
   - kaggle
   - pydicom
+  - h5py
+  - einops
 
   pip:
     - tensorboard

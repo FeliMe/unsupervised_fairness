@@ -1,10 +1,12 @@
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
+from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
+from src.data.camcan_brats import load_camcan_brats_age_split
 from src.data.data_utils import load_dicom_img
 from src.data.rsna_pneumonia_detection import (load_rsna_age_split,
                                                load_rsna_gender_split,
@@ -17,20 +19,26 @@ class NormalDataset(Dataset):
     Receives a list of filenames
     """
 
-    def __init__(self, filenames: List[str], meta: List[str], transform=None):
+    def __init__(
+            self,
+            data: List[str],
+            meta: List[str],
+            transform=None,
+            load_fn: Callable = load_dicom_img):
         """
         :param filenames: Paths to training images
         :param gender:
         """
-        self.filenames = filenames
+        self.data = data
         self.meta = meta
         self.transform = transform
+        self.load_fn = load_fn
 
     def __len__(self) -> int:
-        return len(self.filenames)
+        return len(self.data)
 
     def __getitem__(self, idx: int) -> Tensor:
-        img = load_dicom_img(self.filenames[idx])
+        img = self.load_fn(self.data[idx])
         img = self.transform(img)
         meta = self.meta[idx]
         return img, meta
@@ -42,25 +50,26 @@ class AnomalFairnessDataset(Dataset):
     Receives a list of filenames and a list of class labels (0 == normal).
     """
     def __init__(
-        self,
-        filenames: Dict[str, List[str]],
-        labels: Dict[str, List[int]],
-        transform=None
-    ):
+            self,
+            data: Dict[str, List[str]],
+            labels: Dict[str, List[int]],
+            transform=None,
+            load_fn: Callable = load_dicom_img):
         """
         :param filenames: Paths to images for each subgroup
         :param labels: Class labels for each subgroup (0 == normal, other == anomaly)
         """
         super().__init__()
-        self.filenames = filenames
+        self.data = data
         self.labels = labels
         self.transform = transform
+        self.load_fn = load_fn
 
     def __len__(self) -> int:
-        return len(self.filenames[list(self.filenames.keys())[0]])
+        return len(self.data[list(self.data.keys())[0]])
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, int]:
-        img = {k: self.transform(load_dicom_img(v[idx])) for k, v in self.filenames.items()}
+        img = {k: self.transform(self.load_fn(v[idx])) for k, v in self.data.items()}
         label = {k: v[idx] for k, v in self.labels.items()}
         return img, label
 
@@ -76,33 +85,49 @@ def group_collate_fn(batch: List[Tuple[Any, ...]]):
     return imgs, labels
 
 
-def get_rsna_dataloaders(rsna_dir: str,
-                         batch_size: int,
-                         img_size: int,
-                         protected_attr: str,
-                         num_workers: Optional[int] = 4,
-                         male_percent: Optional[float] = 0.5,
-                         train_age: Optional[str] = 'avg'):
+def get_dataloaders(dataset: str,
+                    batch_size: int,
+                    img_size: int,
+                    protected_attr: str,
+                    num_workers: Optional[int] = 4,
+                    male_percent: Optional[float] = 0.5,
+                    train_age: Optional[str] = 'avg'):
     """
     Returns dataloaders for the RSNA dataset.
     """
     # Load filenames and labels
-    if protected_attr == 'none':
-        filenames, labels, meta = load_rsna_naive_split(rsna_dir)
-    elif protected_attr == 'age':
-        filenames, labels, meta = load_rsna_age_split(rsna_dir, train_age=train_age)
-    elif protected_attr == 'sex':
-        filenames, labels, meta = load_rsna_gender_split(rsna_dir, male_percent=male_percent)
+    if dataset == 'rsna':
+        load_fn = load_dicom_img
+        if protected_attr == 'none':
+            data, labels, meta = load_rsna_naive_split(RSNA_DIR)
+        elif protected_attr == 'age':
+            data, labels, meta = load_rsna_age_split(RSNA_DIR, train_age=train_age)
+        elif protected_attr == 'sex':
+            data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent)
+        else:
+            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
+    elif dataset == 'camcan/brats':
+        def load_fn(x):
+            return x
+        if protected_attr == 'none':
+            raise NotImplementedError
+            # filenames, labels, meta = load_camcan_naive_split(CAMCAN_DIR)
+        elif protected_attr == 'age':
+            data, labels, meta = load_camcan_brats_age_split(CAMCAN_DIR, BRATS_DIR,
+                                                             sequence='T2',
+                                                             train_age=train_age,
+                                                             slice_range=(73, 103))
+        else:
+            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     else:
-        raise ValueError(f'Unknown protected attribute: {protected_attr}')
+        raise ValueError(f'Unknown dataset: {dataset}')
 
-    train_filenames = filenames['train']
+    train_data = data['train']
     train_meta = meta['train']
-    anomaly = 'lungOpacity'  # 'otherAnomaly'
-    val_filenames = {k: v for k, v in filenames.items() if f'val/{anomaly}' in k}
-    val_labels = {k: v for k, v in labels.items() if f'val/{anomaly}' in k}
-    test_filenames = {k: v for k, v in filenames.items() if f'test/{anomaly}' in k}
-    test_labels = {k: v for k, v in labels.items() if f'test/{anomaly}' in k}
+    val_data = {k: v for k, v in data.items() if 'val' in k}
+    val_labels = {k: v for k, v in labels.items() if 'val' in k}
+    test_data = {k: v for k, v in data.items() if 'test' in k}
+    test_labels = {k: v for k, v in labels.items() if 'test' in k}
 
     # Define transforms
     transform = transforms.Compose([
@@ -111,16 +136,13 @@ def get_rsna_dataloaders(rsna_dir: str,
     ])
 
     # Create datasets
-    train_dataset = NormalDataset(train_filenames, train_meta, transform=transform)
-    # anomal_ds = partial(AnomalDataset, transform=transform)
-    anomal_ds = partial(AnomalFairnessDataset, transform=transform)
-    val_dataset = anomal_ds(val_filenames, val_labels)
-    test_dataset = anomal_ds(test_filenames, test_labels)
+    train_dataset = NormalDataset(train_data, train_meta, transform=transform, load_fn=load_fn)
+    anomal_ds = partial(AnomalFairnessDataset, transform=transform, load_fn=load_fn)
+    val_dataset = anomal_ds(val_data, val_labels)
+    test_dataset = anomal_ds(test_data, test_labels)
 
     # Create dataloaders
-    # dl = partial(DataLoader, batch_size=batch_size, num_workers=num_workers)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    # dl = partial(DataLoader, batch_size=batch_size, num_workers=num_workers, collate_fn=group_collate_fn)
     dl = partial(DataLoader, batch_size=batch_size, num_workers=num_workers, collate_fn=group_collate_fn)
     val_dataloader = dl(val_dataset, shuffle=False)
     test_dataloader = dl(test_dataset, shuffle=False)

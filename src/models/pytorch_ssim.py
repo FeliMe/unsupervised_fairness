@@ -68,7 +68,7 @@ class SSIMLoss(nn.Module):
             self.channel = channel
 
         # SSIM loss is the negative ssim
-        return -_ssim(img1, img2, window, self.window_size, channel, self.size_average)
+        return 1.0 - _ssim(img1, img2, window, self.window_size, channel, self.size_average)
 
 
 def ssim(img1: Tensor, img2: Tensor, window_size: int = 11,

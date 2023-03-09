@@ -1,5 +1,6 @@
 __pycache__/
 **tester.py
+**tester.ipynb
 run_*.sh
 .vscode/
 *.egg-info
