@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.models.RD.resnet import resnet18
 from src.models.RD.de_resnet import de_resnet18
+from src.models.RD.resnet import resnet18
 
 
 class ReverseDistillation(nn.Module):
@@ -38,7 +38,7 @@ class ReverseDistillation(nn.Module):
         rec = self.get_rec(feats)
         return feats, rec
 
-    def loss(self, x: Tensor) -> Dict[str, Tensor]:
+    def loss(self, x: Tensor, **kwargs) -> Dict[str, Tensor]:
         feats, rec = self.forward(x)
         loss = 0.
         for f, r in zip(feats, rec):

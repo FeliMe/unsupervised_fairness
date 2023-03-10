@@ -57,7 +57,7 @@ class DeepSVDD(nn.Module):
         x = self.encoder(x)
         return x
 
-    def loss(self, x: Tensor) -> Dict[str, Tensor]:
+    def loss(self, x: Tensor, **kwargs) -> Dict[str, Tensor]:
         """Compute DeepSVDD loss."""
         pred = self.forward(x)
         loss = one_class_scores(pred, self.c).mean()

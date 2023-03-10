@@ -13,6 +13,7 @@ from src.data.datasets import get_dataloaders
 from src.models.DeepSVDD.deepsvdd import DeepSVDD
 from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
+from src.models.supervised.resnet import ResNet18
 from src.utils.metrics import AvgDictMeter, build_metrics
 from src.utils.utils import seed_everything
 
@@ -24,7 +25,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 parser.add_argument('--debug', action='store_true', help='Debug mode')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='camcan', choices=['rsna', 'camcan', 'camcan/brats'])
+parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats'])
 parser.add_argument('--protected_attr', type=str, default='age',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
@@ -60,8 +61,8 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='FAE',
-                    choices=['FAE', 'RD', 'DeepSVDD'])
+parser.add_argument('--model_type', type=str, default='ResNet18',
+                    choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
 # FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
@@ -78,6 +79,9 @@ parser.add_argument('--repr_dim', type=int, default=256,
                     help='Dimensionality of the hypersphere c')
 
 config = parser.parse_args()
+
+if config.model_type == 'ResNet18':
+    config.supervised = True
 
 # Select training device
 config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -104,6 +108,8 @@ elif config.model_type == 'RD':
     model = ReverseDistillation()
 elif config.model_type == 'DeepSVDD':
     model = DeepSVDD(config)
+elif config.model_type == 'ResNet18':
+    model = ResNet18()
 else:
     raise ValueError(f'Unknown model type {config.model_type}')
 model = model.to(config.device)
@@ -126,6 +132,7 @@ train_loader, val_loader, test_loader = get_dataloaders(
     protected_attr=config.protected_attr,
     male_percent=config.male_percent,
     train_age=config.train_age,
+    supervised=config.supervised
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 
@@ -144,11 +151,12 @@ wandb.init(
 )
 
 
-def train_step(model, optimizer, x, device):
+def train_step(model, optimizer, x, y, device):
     model.train()
     optimizer.zero_grad()
     x = x.to(device)
-    loss_dict = model.loss(x)
+    y = y.to(device)
+    loss_dict = model.loss(x, y)
     loss = loss_dict['loss']
     loss.backward()
     optimizer.step()
@@ -162,10 +170,10 @@ def train(model, optimizer, train_loader, val_loader, config):
     train_losses = AvgDictMeter()
     t_start = time()
     while True:
-        for x, _ in train_loader:
+        for x, y, _ in train_loader:
             step += 1
 
-            loss_dict = train_step(model, optimizer, x, config.device)
+            loss_dict = train_step(model, optimizer, x, y, config.device)
             train_losses.add(loss_dict)
 
             if step % config.log_frequency == 0:
@@ -202,13 +210,15 @@ def train(model, optimizer, train_loader, val_loader, config):
         print(f'Finished epoch {i_epoch}, ({step} iterations)')
 
 
-def val_step(model: nn.Module, x: Tensor, device):
+def val_step(model: nn.Module, x: Tensor, y: Tensor, device):
     model.eval()
     x = x.to(device)
+    y = y.to(device)
     with torch.no_grad():
-        loss_dict = model.loss(x)
+        loss_dict = model.loss(x, y)
         anomaly_map, anomaly_score = model.predict_anomaly(x)
     x = x.cpu()
+    y = y.cpu()
     anomaly_score = anomaly_score.cpu() if anomaly_score is not None else None
     anomaly_map = anomaly_map.cpu() if anomaly_map is not None else None
     return loss_dict, anomaly_map, anomaly_score
@@ -229,7 +239,7 @@ def validate(config, model, loader, step, mode, log_imgs=False):
         # x, y, anomaly_map: [b, 1, h, w]
         # Compute loss, anomaly map and anomaly score
         for i, k in enumerate(x.keys()):
-            loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], device)
+            loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], y[k], device)
 
             # Update metrics
             group = torch.tensor([i] * len(anomaly_score))

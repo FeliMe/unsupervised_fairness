@@ -23,7 +23,8 @@ class NormalDataset(Dataset):
     def __init__(
             self,
             data: List[str],
-            meta: List[str],
+            labels: List[int],
+            meta: List[int],
             transform=None,
             load_fn: Callable = load_dicom_img):
         """
@@ -31,6 +32,7 @@ class NormalDataset(Dataset):
         :param gender:
         """
         self.data = data
+        self.labels = labels
         self.meta = meta
         self.transform = transform
         self.load_fn = load_fn
@@ -41,8 +43,9 @@ class NormalDataset(Dataset):
     def __getitem__(self, idx: int) -> Tensor:
         img = self.load_fn(self.data[idx])
         img = self.transform(img)
+        label = self.labels[idx]
         meta = self.meta[idx]
-        return img, meta
+        return img, label, meta
 
 
 class AnomalFairnessDataset(Dataset):
@@ -92,7 +95,8 @@ def get_dataloaders(dataset: str,
                     protected_attr: str,
                     num_workers: Optional[int] = 4,
                     male_percent: Optional[float] = 0.5,
-                    train_age: Optional[str] = 'avg'):
+                    train_age: Optional[str] = 'avg',
+                    supervised: Optional[bool] = False) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Returns dataloaders for the RSNA dataset.
     """
@@ -100,11 +104,11 @@ def get_dataloaders(dataset: str,
     if dataset == 'rsna':
         load_fn = load_dicom_img
         if protected_attr == 'none':
-            data, labels, meta = load_rsna_naive_split(RSNA_DIR)
+            data, labels, meta = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
         elif protected_attr == 'age':
-            data, labels, meta = load_rsna_age_split(RSNA_DIR, train_age=train_age)
+            data, labels, meta = load_rsna_age_split(RSNA_DIR, train_age=train_age, for_supervised=supervised)
         elif protected_attr == 'sex':
-            data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent)
+            data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'camcan/brats':
@@ -137,6 +141,7 @@ def get_dataloaders(dataset: str,
         raise ValueError(f'Unknown dataset: {dataset}')
 
     train_data = data['train']
+    train_labels = labels['train']
     train_meta = meta['train']
     val_data = {k: v for k, v in data.items() if 'val' in k}
     val_labels = {k: v for k, v in labels.items() if 'val' in k}
@@ -150,7 +155,7 @@ def get_dataloaders(dataset: str,
     ])
 
     # Create datasets
-    train_dataset = NormalDataset(train_data, train_meta, transform=transform, load_fn=load_fn)
+    train_dataset = NormalDataset(train_data, train_labels, train_meta, transform=transform, load_fn=load_fn)
     anomal_ds = partial(AnomalFairnessDataset, transform=transform, load_fn=load_fn)
     val_dataset = anomal_ds(val_data, val_labels)
     test_dataset = anomal_ds(test_data, test_labels)

@@ -8,7 +8,6 @@ from torchvision import models as tv_models
 
 from src.models.pytorch_ssim import SSIMLoss
 
-
 """"""""""""""""""""""" Feature Extractor """""""""""""""""""""""""""
 
 
@@ -272,7 +271,7 @@ class FeatureReconstructor(nn.Module):
         rec = self.get_rec(feats)
         return feats, rec
 
-    def get_feats(self, x: Tensor) -> Tensor:
+    def get_feats(self, x: Tensor, **kwargs) -> Tensor:
         with torch.no_grad():
             feats = self.extractor(x)
         return feats

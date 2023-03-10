@@ -1,11 +1,12 @@
-from torch import Tensor
 import torch.nn as nn
+from torch import Tensor
+
 try:
     from torch.hub import load_state_dict_from_url
 except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
-from typing import Type, Any, Callable, Union, List, Optional
 
+from typing import Any, Callable, List, Optional, Type, Union
 
 __all__ = ['ResNet', 'de_resnet18', 'de_resnet34', 'de_resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',

@@ -1,14 +1,13 @@
 import os
 from glob import glob
-from tqdm import tqdm
 
 import kaggle
 import numpy as np
 import pandas as pd
 import pydicom as dicom
+from tqdm import tqdm
 
 from src import RSNA_DIR
-
 
 CLASS_MAPPING = {
     'Normal': 0,  # 8851, female: 2905, male: 4946, age mean: 44.94, std: 16.39, min: 2, max: 155
@@ -50,7 +49,9 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
     metadata.to_csv(os.path.join(rsna_dir, 'train_metadata.csv'), index=False)
 
 
-def load_rsna_naive_split(rsna_dir: str = RSNA_DIR, anomaly: str = 'lungOpacity'):
+def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
+                          anomaly: str = 'lungOpacity',
+                          for_supervised: bool = False):
     assert anomaly in ['lungOpacity', 'otherAnomaly']
     """Naive train/val/test split."""
     # Load metadata
@@ -71,6 +72,14 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR, anomaly: str = 'lungOpacity'
     val_test = data.sample(n=800, random_state=42)
     val = val_test.iloc[:400, :]
     test = val_test.iloc[400:, :]
+    # Rest of anomal data
+    rest_anomal = data[~data.patientId.isin(val_test.patientId)]
+
+    # Mix train with anomal data if supervised
+    if for_supervised:
+        n_normal = len(train) // 2
+        train_anomal = rest_anomal.sample(n_normal, random_state=42)
+        train = pd.concat([train[:n_normal], train_anomal])
 
     # Concatenate and shuffle
     val = pd.concat([val_normal, val]).sample(frac=1, random_state=42).reset_index(drop=True)
@@ -95,7 +104,8 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR, anomaly: str = 'lungOpacity'
 
 def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
                            male_percent: float = 0.5,
-                           anomaly: str = 'lungOpacity'):
+                           anomaly: str = 'lungOpacity',
+                           for_supervised: bool = False):
     """Load data with gender balanced val and test sets. The ratio between male
     and female samples in the training set can be controlled.
     lo = lung opacity
@@ -133,6 +143,9 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     val_female = pd.concat([val_test_normal_female, val_female]).sample(frac=1, random_state=42).reset_index(drop=True)
     test_male = pd.concat([val_test_normal_male, test_male]).sample(frac=1, random_state=42).reset_index(drop=True)
     test_female = pd.concat([val_test_normal_female, test_female]).sample(frac=1, random_state=42).reset_index(drop=True)
+    # Rest of anomal data
+    rest_male = male[~male.patientId.isin(val_test_male.patientId)]
+    rest_female = female[~female.patientId.isin(val_test_female.patientId)]
 
     # Rest for training
     rest_normal_male = normal_male[~normal_male.patientId.isin(val_test_normal_male.patientId)]
@@ -142,6 +155,16 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     n_female = int(n_samples * female_percent)
     train_male = rest_normal_male.sample(n=n_male, random_state=42)
     train_female = rest_normal_female.sample(n=n_female, random_state=42)
+
+    # Mix train with anomal data if supervised
+    if for_supervised:
+        n_male = len(train_male) // 2
+        n_female = len(train_female) // 2
+        train_anomal_male = rest_male.sample(n_male, random_state=42)
+        train_anomal_female = rest_female.sample(n_female, random_state=42)
+        train_male = pd.concat([train_male[:n_male], train_anomal_male])
+        train_female = pd.concat([train_female[:n_female], train_anomal_female])
+
     # Aggregate training set and shuffle
     train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42).reset_index(drop=True)
 
@@ -168,7 +191,8 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
 
 def load_rsna_age_split(rsna_dir: str = RSNA_DIR,
                         train_age: float = 'avg',
-                        anomaly: str = 'lungOpacity'):
+                        anomaly: str = 'lungOpacity',
+                        for_supervised: bool = False):
     """Load data with gender balanced val and test sets. The ratio between male
     and female samples in the training set can be controlled.
     lo = lung opacity
@@ -215,6 +239,10 @@ def load_rsna_age_split(rsna_dir: str = RSNA_DIR,
     test_young = vc_young.iloc[50:, :]
     test_avg = vc_avg.iloc[50:, :]
     test_old = vc_old.iloc[50:, :]
+    # Rest of anomal data
+    rest_young = young[~young.patientId.isin(vc_young.patientId)]
+    rest_avg = avg[~avg.patientId.isin(vc_avg.patientId)]
+    rest_old = old[~old.patientId.isin(vc_old.patientId)]
 
     # Aggregate validation and test sets and shuffle
     val_young = pd.concat([vc_normal_young, val_young]).sample(frac=1, random_state=42).reset_index(drop=True)
@@ -229,12 +257,25 @@ def load_rsna_age_split(rsna_dir: str = RSNA_DIR,
     rest_normal_avg = normal_avg[~normal_avg.patientId.isin(vc_normal_avg.patientId)]
     rest_normal_old = normal_old[~normal_old.patientId.isin(vc_normal_old.patientId)]
     n_samples = min(len(rest_normal_young), len(rest_normal_avg), len(rest_normal_old))
+    train_young = rest_normal_young.sample(n=n_samples, random_state=42)
+    train_avg = rest_normal_avg.sample(n=n_samples, random_state=42)
+    train_old = rest_normal_old.sample(n=n_samples, random_state=42)
+
+    # Mix train with anomal data if supervised
+    if for_supervised:
+        n_young = len(train_young)
+        train_young = pd.concat([train_young[:n_young // 2], rest_young.sample(n=n_young // 2, random_state=42)])
+        n_avg = len(train_avg)
+        train_avg = pd.concat([train_avg[:n_avg // 2], rest_avg.sample(n=n_avg // 2, random_state=42)])
+        n_old = len(train_old)
+        train_old = pd.concat([train_old[:n_old // 2], rest_old.sample(n=n_old // 2, random_state=42)])
+
     if train_age == 'young':
-        train = rest_normal_young.sample(n=n_samples, random_state=42)
+        train = train_young
     elif train_age == 'avg':
-        train = rest_normal_avg.sample(n=n_samples, random_state=42)
+        train = train_avg
     elif train_age == 'old':
-        train = rest_normal_old.sample(n=n_samples, random_state=42)
+        train = train_old
     else:
         raise ValueError("train_age must be 'young', 'avg' or 'old'.")
 
