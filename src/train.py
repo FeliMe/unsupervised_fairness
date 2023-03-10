@@ -24,7 +24,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 parser.add_argument('--debug', action='store_true', help='Debug mode')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='camcan/brats', choices=['rsna', 'camcan/brats'])
+parser.add_argument('--dataset', type=str, default='camcan', choices=['rsna', 'camcan', 'camcan/brats'])
 parser.add_argument('--protected_attr', type=str, default='age',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
@@ -129,9 +129,6 @@ train_loader, val_loader, test_loader = get_dataloaders(
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 
-x, y = next(iter(val_loader))
-sub_groups = list(x.keys())
-
 
 """"""""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""""
 if not config.debug:
@@ -141,7 +138,7 @@ wandb.init(
     entity='felix-meissen',
     dir=config.log_dir,
     name=config.log_dir.lstrip('logs/'),
-    tags=[config.model_type, config.protected_attr],
+    tags=[config.model_type, config.dataset, config.protected_attr],
     config=config,
     mode="disabled" if config.debug else "online"
 )

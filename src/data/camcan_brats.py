@@ -20,7 +20,7 @@ def load_camcan_age_split(
         sequence: str = 'T2',
         slice_range: Tuple[int, int] = None):
     # Load data
-    with h5py.File(os.path.join(data_dir, 'hf5', f'camcan_{sequence}_ordered_as_participants_tsv.hf5') , 'r') as f:
+    with h5py.File(os.path.join(data_dir, 'hf5', f'camcan_{sequence}_ordered_as_participants_tsv.hf5'), 'r') as f:
         data = torch.from_numpy(f['mri'][...])
     meta = pd.read_csv(os.path.join(
         data_dir,
@@ -59,9 +59,8 @@ def load_camcan_age_split(
     else:
         raise ValueError("train_age must be 'young', 'avg' or 'old'.")
 
-    ages = repeat(ages, 'n -> n d', d=data.shape[1])
+    ages = repeat(ages, 'n -> (n d)', d=data.shape[1])
     data = rearrange(data, 'n d h w -> (n d) 1 h w')
-    ages = rearrange(ages, 'n d -> (n d)')
     labels = np.zeros(ages.shape)
     return data, labels, ages, age_bins
 
@@ -89,10 +88,9 @@ def load_brats_age_split(
     labels = np.where(seg_data_bin.sum(axis=(2, 3)) > 16, 1, 0)  # Require at least 5 pixels to be a positive sample
 
     # Reshape data and labels
-    ages = repeat(ages, 'n -> n d', d=data.shape[1])
+    ages = repeat(ages, 'n -> (n d)', d=data.shape[1])
     data = rearrange(data, 'n d h w -> (n d) 1 h w')
     labels = rearrange(labels, 'n d -> (n d)')
-    ages = rearrange(ages, 'n d -> (n d)')
 
     # Split data into bins by age
     data_young = data[ages < age_bins[1]]
@@ -178,6 +176,135 @@ def load_camcan_brats_age_split(
     data['train'] = data_train
     labels['train'] = labels_train
     ages['train'] = ages_train
+    return data, labels, ages
+
+
+def load_camcan_only_age_split(
+        data_dir: str = CAMCAN_DIR,
+        train_age: float = 'avg',
+        sequence: str = 'T2',
+        slice_range: Tuple[int, int] = None):
+    # Load data
+    with h5py.File(os.path.join(data_dir, 'hf5', f'camcan_{sequence}_ordered_as_participants_tsv.hf5'), 'r') as f:
+        data = torch.from_numpy(f['mri'][...])
+    meta = pd.read_csv(os.path.join(
+        data_dir,
+        'cc700/mri/pipeline/release004/BIDS_20190411/anat/participants.tsv'
+    ), sep='\t')
+    ages = meta['age'].values
+
+    # Select slice range
+    if slice_range is not None:
+        data = data[:, slice_range[0]:slice_range[1]]
+
+    # Split data into bins by age
+    n_bins = 3
+    age_bins = np.histogram(ages, bins=n_bins)[1]
+    data_young = data[ages < age_bins[1]]
+    data_avg = data[(ages >= age_bins[1]) & (ages < age_bins[2])]
+    data_old = data[ages >= age_bins[2]]
+    ages_young = ages[ages < age_bins[1]]
+    ages_avg = ages[(ages >= age_bins[1]) & (ages < age_bins[2])]
+    ages_old = ages[ages >= age_bins[2]]
+
+    # Randomly split into train, val, and test
+    # young
+    inds_young = np.random.default_rng(42).permutation(np.arange(len(data_young)))
+    inds_young_train = inds_young[:int(len(inds_young) * 0.8)]
+    inds_young_val = inds_young[int(len(inds_young) * 0.8):int(len(inds_young) * 0.9)]
+    inds_young_test = inds_young[int(len(inds_young) * 0.9):]
+    data_young_train = data_young[inds_young_train]
+    data_young_val = data_young[inds_young_val]
+    data_young_test = data_young[inds_young_test]
+    ages_young_train = ages_young[inds_young_train]
+    ages_young_val = ages_young[inds_young_val]
+    ages_young_test = ages_young[inds_young_test]
+    # avg
+    inds_avg = np.random.default_rng(42).permutation(np.arange(len(data_avg)))
+    inds_avg_train = inds_avg[:int(len(inds_avg) * 0.8)]
+    inds_avg_val = inds_avg[int(len(inds_avg) * 0.8):int(len(inds_avg) * 0.9)]
+    inds_avg_test = inds_avg[int(len(inds_avg) * 0.9):]
+    data_avg_train = data_avg[inds_avg_train]
+    data_avg_val = data_avg[inds_avg_val]
+    data_avg_test = data_avg[inds_avg_test]
+    ages_avg_train = ages_avg[inds_avg_train]
+    ages_avg_val = ages_avg[inds_avg_val]
+    ages_avg_test = ages_avg[inds_avg_test]
+    # old
+    inds_old = np.random.default_rng(42).permutation(np.arange(len(data_old)))
+    inds_old_train = inds_old[:int(len(inds_old) * 0.8)]
+    inds_old_val = inds_old[int(len(inds_old) * 0.8):int(len(inds_old) * 0.9)]
+    inds_old_test = inds_old[int(len(inds_old) * 0.9):]
+    data_old_train = data_old[inds_old_train]
+    data_old_val = data_old[inds_old_val]
+    data_old_test = data_old[inds_old_test]
+    ages_old_train = ages_old[inds_old_train]
+    ages_old_val = ages_old[inds_old_val]
+    ages_old_test = ages_old[inds_old_test]
+
+    # Select age group
+    n_samples = min(len(data_young_train), len(data_avg_train), len(data_old_train))
+    if train_age == 'young':
+        inds = np.random.default_rng(42).choice(np.arange(len(data_young_train)), n_samples, replace=False)
+        data_train = data_young_train[inds]
+        ages_train = ages_young_train[inds]
+    elif train_age == 'avg':
+        inds = np.random.default_rng(42).choice(np.arange(len(data_avg_train)), n_samples, replace=False)
+        data_train = data_avg_train[inds]
+        ages_train = ages_avg_train[inds]
+    elif train_age == 'old':
+        inds = np.random.default_rng(42).choice(np.arange(len(data_old_train)), n_samples, replace=False)
+        data_train = data_old_train[inds]
+        ages_train = ages_old_train[inds]
+    else:
+        raise ValueError("train_age must be 'young', 'avg' or 'old'.")
+
+    # Repeat for each slice and reshape
+    ages_train = repeat(ages_train, 'n -> (n d)', d=data_train.shape[1])
+    ages_young_val = repeat(ages_young_val, 'n -> (n d)', d=data_young_val.shape[1])
+    ages_avg_val = repeat(ages_avg_val, 'n -> (n d)', d=data_avg_val.shape[1])
+    ages_old_val = repeat(ages_old_val, 'n -> (n d)', d=data_old_val.shape[1])
+    ages_young_test = repeat(ages_young_test, 'n -> (n d)', d=data_young_test.shape[1])
+    ages_avg_test = repeat(ages_avg_test, 'n -> (n d)', d=data_avg_test.shape[1])
+    ages_old_test = repeat(ages_old_test, 'n -> (n d)', d=data_old_test.shape[1])
+    # Reshape data
+    data_train = rearrange(data_train, 'n d h w -> (n d) 1 h w')
+    data_young_val = rearrange(data_young_val, 'n d h w -> (n d) 1 h w')
+    data_avg_val = rearrange(data_avg_val, 'n d h w -> (n d) 1 h w')
+    data_old_val = rearrange(data_old_val, 'n d h w -> (n d) 1 h w')
+    data_young_test = rearrange(data_young_test, 'n d h w -> (n d) 1 h w')
+    data_avg_test = rearrange(data_avg_test, 'n d h w -> (n d) 1 h w')
+    data_old_test = rearrange(data_old_test, 'n d h w -> (n d) 1 h w')
+    # Create labels
+    labels = np.zeros(ages.shape)
+
+    data = {
+        'train': data_train,
+        'val/young': data_young_val,
+        'val/avg': data_avg_val,
+        'val/old': data_old_val,
+        'test/young': data_young_test,
+        'test/avg': data_avg_test,
+        'test/old': data_old_test,
+    }
+    labels = {
+        'train': torch.zeros(ages_train.shape),
+        'val/young': torch.zeros(ages_young_val.shape),
+        'val/avg': torch.zeros(ages_avg_val.shape),
+        'val/old': torch.zeros(ages_old_val.shape),
+        'test/young': torch.zeros(ages_young_test.shape),
+        'test/avg': torch.zeros(ages_avg_test.shape),
+        'test/old': torch.zeros(ages_old_test.shape),
+    }
+    ages = {
+        'train': ages_train,
+        'val/young': ages_young_val,
+        'val/avg': ages_avg_val,
+        'val/old': ages_old_val,
+        'test/young': ages_young_test,
+        'test/avg': ages_avg_test,
+        'test/old': ages_old_test,
+    }
     return data, labels, ages
 
 

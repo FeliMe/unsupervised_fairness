@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
 from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
-from src.data.camcan_brats import load_camcan_brats_age_split
+from src.data.camcan_brats import (load_camcan_brats_age_split,
+                                   load_camcan_only_age_split)
 from src.data.data_utils import load_dicom_img
 from src.data.rsna_pneumonia_detection import (load_rsna_age_split,
                                                load_rsna_gender_split,
@@ -117,6 +118,19 @@ def get_dataloaders(dataset: str,
                                                              sequence='T2',
                                                              train_age=train_age,
                                                              slice_range=(73, 103))
+        else:
+            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
+    elif dataset == 'camcan':
+        def load_fn(x):
+            return x
+        if protected_attr == 'none':
+            raise NotImplementedError
+            # filenames, labels, meta = load_camcan_naive_split(CAMCAN_DIR)
+        elif protected_attr == 'age':
+            data, labels, meta = load_camcan_only_age_split(CAMCAN_DIR,
+                                                            sequence='T2',
+                                                            train_age=train_age,
+                                                            slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     else:

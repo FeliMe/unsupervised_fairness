@@ -52,6 +52,8 @@ class AveragePrecision(Metric):
     def compute_subgroup(self, subgroup: int):
         preds = torch.cat(self.preds)  # [N, 2]
         targets = torch.cat(self.targets)  # [N]
+        if targets.sum() == 0:
+            return 0
         # Compute min and max score and thresholds for whole dataset
         min_score = preds[:, 0].min()
         max_score = preds[:, 0].quantile(0.99, interpolation='lower')  # Ignore outliers
@@ -104,6 +106,8 @@ class TPR_at_FPR(Metric):
     def compute_subgroup(self, subgroup: int):
         preds = torch.cat(self.preds)  # [N, 2]
         targets = torch.cat(self.targets)  # [N]
+        if targets.sum() == 0:
+            return 0
         # Compute FPR threshold for total dataset
         fpr, _, thresholds = roc_curve(targets, preds[:, 0], pos_label=1)
         threshold = thresholds[np.argwhere(fpr < self.xfpr)[-1, 0]]
@@ -117,7 +121,7 @@ class TPR_at_FPR(Metric):
     def compute(self):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            res[f'{subgroup}_fpr@{self.xfpr}'] = self.compute_subgroup(i)
+            res[f'{subgroup}_tpr@{self.xfpr}'] = self.compute_subgroup(i)
         return res
 
 
@@ -144,6 +148,8 @@ class FPR_at_TPR(Metric):
     def compute_subgroup(self, subgroup: int):
         preds = torch.cat(self.preds)  # [N, 2]
         targets = torch.cat(self.targets)  # [N]
+        if targets.sum() == 0:
+            return 0
         # Compute TPR threshold for total dataset
         _, tpr, thresholds = roc_curve(targets, preds[:, 0], pos_label=1)
         threshold = thresholds[np.argwhere(tpr > self.xtpr)[0, 0]]
@@ -182,6 +188,8 @@ class cDC(Metric):
     def compute_subgroup(self, subgroup: int):
         preds = torch.cat(self.preds)  # [N, 2]
         targets = torch.cat(self.targets)  # [N]
+        if targets.sum() == 0:
+            return 0
         # Normalize preds for full dataset
         min_score = preds[:, 0].min()
         max_score = preds[:, 0].quantile(0.99, interpolation='lower')  # Ignore outliers
@@ -237,6 +245,8 @@ class AverageDSC(Metric):
     def compute_subgroup(self, subgroup: int):
         preds = torch.cat(self.preds)  # [N, 2]
         targets = torch.cat(self.targets)  # [N]
+        if targets.sum() == 0:
+            return 0
         # Compute min and max score and thresholds for whole dataset
         min_score = preds[:, 0].min()
         max_score = preds[:, 0].quantile(0.99, interpolation='lower')  # Ignore outliers
