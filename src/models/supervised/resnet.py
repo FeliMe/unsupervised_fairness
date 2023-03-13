@@ -8,8 +8,11 @@ from torchvision import models
 
 
 class ResNet18(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
+
+        if config.condition_on_metadata:
+            raise NotImplementedError
 
         self.resnet = models.resnet18(pretrained=False)
         self.resnet.fc = nn.Linear(512, 1, bias=False)

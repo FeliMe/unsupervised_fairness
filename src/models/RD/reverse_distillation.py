@@ -11,8 +11,11 @@ from src.models.RD.resnet import resnet18
 
 
 class ReverseDistillation(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
+
+        if config.condition_on_metadata:
+            raise NotImplementedError
 
         self.encoder, self.bottleneck = resnet18(pretrained=True)
         self.decoder = de_resnet18(pretrained=False)

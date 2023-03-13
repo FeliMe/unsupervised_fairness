@@ -15,6 +15,11 @@ CLASS_MAPPING = {
     'No Lung Opacity / Not Normal': 2  # 11821, female: 5111, male: 6710, age mean: 49.33, std: 16.49, min: 1, max: 153
 }
 
+SEX_MAPPING = {
+    'M': 0,
+    'F': 1
+}
+
 
 def download_rsna(rsna_dir: str = RSNA_DIR):
     """Downloads the RSNA dataset."""
@@ -185,7 +190,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     for mode, data in sets.items():
         filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
         labels[mode] = [min(1, label) for label in data.label.values]
-        meta[mode] = data['PatientSex'].values
+        meta[mode] = np.array([SEX_MAPPING[v] for v in data['PatientSex'].values])
     return filenames, labels, meta
 
 

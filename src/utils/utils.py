@@ -1,13 +1,11 @@
 import os
 import random
-
 from argparse import Namespace
 from numbers import Number
 from typing import Any, Dict
 
 import numpy as np
 import torch
-
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -19,6 +17,14 @@ def seed_everything(seed):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def exists(val):
+    return val is not None
+
+
+def default(val, d):
+    return val if exists(val) else d
 
 
 class TensorboardLogger(SummaryWriter):

@@ -5,9 +5,7 @@ from datetime import datetime
 from time import time
 
 import torch
-import torch.nn as nn
 import wandb
-from torch import Tensor
 
 from src.data.datasets import get_dataloaders
 from src.models.DeepSVDD.deepsvdd import DeepSVDD
@@ -15,7 +13,7 @@ from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
 from src.models.supervised.resnet import ResNet18
 from src.utils.metrics import AvgDictMeter, build_metrics
-from src.utils.utils import seed_everything
+from src.utils.utils import seed_everything, exists
 
 """"""""""""""""""""""""""""""""""" Config """""""""""""""""""""""""""""""""""
 
@@ -61,8 +59,10 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='ResNet18',
+parser.add_argument('--model_type', type=str, default='DeepSVDD',
                     choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
+parser.add_argument('--condition_on_metadata', default=False, action='store_true')
+parser.add_argument('--emb_dim', type=int, default=16)
 # FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
@@ -80,8 +80,7 @@ parser.add_argument('--repr_dim', type=int, default=256,
 
 config = parser.parse_args()
 
-if config.model_type == 'ResNet18':
-    config.supervised = True
+config.supervised = config.model_type == 'ResNet18'
 
 # Select training device
 config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -105,11 +104,11 @@ print("Initializing model...")
 if config.model_type == 'FAE':
     model = FeatureReconstructor(config)
 elif config.model_type == 'RD':
-    model = ReverseDistillation()
+    model = ReverseDistillation(config)
 elif config.model_type == 'DeepSVDD':
     model = DeepSVDD(config)
 elif config.model_type == 'ResNet18':
-    model = ResNet18()
+    model = ResNet18(config)
 else:
     raise ValueError(f'Unknown model type {config.model_type}')
 model = model.to(config.device)
@@ -140,23 +139,27 @@ print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 """"""""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""""
 if not config.debug:
     os.makedirs(config.log_dir, exist_ok=True)
+wandb_tags = [config.model_type, config.dataset, config.protected_attr]
+if config.condition_on_metadata:
+    wandb_tags.append('conditioned')
 wandb.init(
     project='unsupervised-fairness',
     entity='felix-meissen',
     dir=config.log_dir,
     name=config.log_dir.lstrip('logs/'),
-    tags=[config.model_type, config.dataset, config.protected_attr],
+    tags=wandb_tags,
     config=config,
     mode="disabled" if config.debug else "online"
 )
 
 
-def train_step(model, optimizer, x, y, device):
+def train_step(model, optimizer, x, y, meta, device):
     model.train()
     optimizer.zero_grad()
     x = x.to(device)
     y = y.to(device)
-    loss_dict = model.loss(x, y)
+    meta = meta.to(device) if exists(meta) else meta
+    loss_dict = model.loss(x, y=y, context=meta)
     loss = loss_dict['loss']
     loss.backward()
     optimizer.step()
@@ -170,10 +173,11 @@ def train(model, optimizer, train_loader, val_loader, config):
     train_losses = AvgDictMeter()
     t_start = time()
     while True:
-        for x, y, _ in train_loader:
+        for x, y, meta in train_loader:
+            meta = meta if config.condition_on_metadata else None
             step += 1
 
-            loss_dict = train_step(model, optimizer, x, y, config.device)
+            loss_dict = train_step(model, optimizer, x, y, meta, config.device)
             train_losses.add(loss_dict)
 
             if step % config.log_frequency == 0:
@@ -210,13 +214,14 @@ def train(model, optimizer, train_loader, val_loader, config):
         print(f'Finished epoch {i_epoch}, ({step} iterations)')
 
 
-def val_step(model: nn.Module, x: Tensor, y: Tensor, device):
+def val_step(model, x, y, meta, device):
     model.eval()
     x = x.to(device)
     y = y.to(device)
+    meta = meta.to(device) if exists(meta) else meta
     with torch.no_grad():
-        loss_dict = model.loss(x, y)
-        anomaly_map, anomaly_score = model.predict_anomaly(x)
+        loss_dict = model.loss(x, y=y, context=meta)
+        anomaly_map, anomaly_score = model.predict_anomaly(x, context=meta)
     x = x.cpu()
     y = y.cpu()
     anomaly_score = anomaly_score.cpu() if anomaly_score is not None else None
@@ -228,18 +233,19 @@ def validate(config, model, loader, step, mode, log_imgs=False):
     assert mode in ['val', 'test']
     i_step = 0
     device = next(model.parameters()).device
-    x, y = next(iter(loader))
+    x, y, meta = next(iter(loader))
     metrics = build_metrics(subgroup_names=list(x.keys()))
     losses = defaultdict(AvgDictMeter)
     imgs = defaultdict(list)
     anomaly_scores = defaultdict(list)
     anomaly_maps = defaultdict(list)
 
-    for x, y in loader:
+    for x, y, meta in loader:
         # x, y, anomaly_map: [b, 1, h, w]
         # Compute loss, anomaly map and anomaly score
         for i, k in enumerate(x.keys()):
-            loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], y[k], device)
+            meta[k] = meta[k] if config.condition_on_metadata else None
+            loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], y[k], meta[k], device)
 
             # Update metrics
             group = torch.tensor([i] * len(anomaly_score))

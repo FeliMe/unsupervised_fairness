@@ -57,6 +57,7 @@ class AnomalFairnessDataset(Dataset):
             self,
             data: Dict[str, List[str]],
             labels: Dict[str, List[int]],
+            meta: Dict[str, List[int]],
             transform=None,
             load_fn: Callable = load_dicom_img):
         """
@@ -66,6 +67,7 @@ class AnomalFairnessDataset(Dataset):
         super().__init__()
         self.data = data
         self.labels = labels
+        self.meta = meta
         self.transform = transform
         self.load_fn = load_fn
 
@@ -75,18 +77,20 @@ class AnomalFairnessDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[Tensor, int]:
         img = {k: self.transform(self.load_fn(v[idx])) for k, v in self.data.items()}
         label = {k: v[idx] for k, v in self.labels.items()}
-        return img, label
+        meta = {k: v[idx] for k, v in self.meta.items()}
+        return img, label, meta
 
 
 # default_collate does not work with Lists of dictionaries
 def group_collate_fn(batch: List[Tuple[Any, ...]]):
-    assert len(batch[0]) == 2
+    assert len(batch[0]) == 3
     keys = batch[0][0].keys()
 
     imgs = {k: default_collate([sample[0][k] for sample in batch]) for k in keys}
     labels = {k: default_collate([sample[1][k] for sample in batch]) for k in keys}
+    meta = {k: default_collate([sample[2][k] for sample in batch]) for k in keys}
 
-    return imgs, labels
+    return imgs, labels, meta
 
 
 def get_dataloaders(dataset: str,
@@ -145,8 +149,10 @@ def get_dataloaders(dataset: str,
     train_meta = meta['train']
     val_data = {k: v for k, v in data.items() if 'val' in k}
     val_labels = {k: v for k, v in labels.items() if 'val' in k}
+    val_meta = {k: v for k, v in meta.items() if 'val' in k}
     test_data = {k: v for k, v in data.items() if 'test' in k}
     test_labels = {k: v for k, v in labels.items() if 'test' in k}
+    test_meta = {k: v for k, v in meta.items() if 'test' in k}
 
     # Define transforms
     transform = transforms.Compose([
@@ -157,8 +163,8 @@ def get_dataloaders(dataset: str,
     # Create datasets
     train_dataset = NormalDataset(train_data, train_labels, train_meta, transform=transform, load_fn=load_fn)
     anomal_ds = partial(AnomalFairnessDataset, transform=transform, load_fn=load_fn)
-    val_dataset = anomal_ds(val_data, val_labels)
-    test_dataset = anomal_ds(test_data, test_labels)
+    val_dataset = anomal_ds(val_data, val_labels, val_meta)
+    test_dataset = anomal_ds(test_data, test_labels, test_meta)
 
     # Create dataloaders
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
