@@ -5,3 +5,6 @@ run_*.sh
 .vscode/
 *.egg-info
 logs
+src/data/*.csv
+src/plot/*.csv
+src/plot/*.png
