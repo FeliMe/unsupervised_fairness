@@ -3,13 +3,10 @@ from typing import Dict, List, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import rearrange
 from torch import Tensor
 from torchvision import models as tv_models
 
-from src.models.model_components import ContextEmbedding
 from src.models.pytorch_ssim import SSIMLoss
-from src.utils.utils import exists
 
 """"""""""""""""""""""" Feature Extractor """""""""""""""""""""""""""
 
@@ -144,8 +141,7 @@ class EncoderBlock(nn.Module):
             ks: int,
             norm_layer: Optional[str] = None,
             dropout: Optional[float] = 0.0,
-            bias: bool = False,
-            emb_dim: Optional[int] = None) -> None:
+            bias: bool = False) -> None:
         super().__init__()
         pad = ks // 2
         self.conv = nn.Conv2d(in_channels, out_channels, ks, stride=2,
@@ -155,21 +151,11 @@ class EncoderBlock(nn.Module):
         self.act = nn.LeakyReLU()
         if dropout > 0.0:
             self.dropout = nn.Dropout2d(dropout)
-        if emb_dim is not None:
-            self.emb_mlp = nn.Sequential(
-                nn.SiLU(),
-                nn.Linear(emb_dim, out_channels * 2)
-            )
 
-    def forward(self, x: Tensor, context: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
         if hasattr(self, 'norm'):
             x = self.norm(x)
-        if hasattr(self, 'emb_mlp') and exists(context):
-            emb = self.emb_mlp(context)
-            scale_shift = rearrange(emb, 'b c -> b c 1 1')
-            scale, shift = scale_shift.chunk(2, dim=1)
-            x = x * (scale + 1) + shift
         x = self.act(x)
         if hasattr(self, 'dropout'):
             x = self.dropout(x)
@@ -185,8 +171,7 @@ class DecoderBlock(nn.Module):
             pad: int,
             norm_layer: Optional[str] = None,
             dropout: Optional[float] = 0.0,
-            bias: bool = False,
-            emb_dim: Optional[int] = None) -> None:
+            bias: bool = False) -> None:
         super().__init__()
         self.conv = nn.ConvTranspose2d(in_channels, out_channels, ks, stride=2,
                                        padding=pad, bias=bias)
@@ -195,21 +180,11 @@ class DecoderBlock(nn.Module):
         self.act = nn.LeakyReLU()
         if dropout > 0.0:
             self.dropout = nn.Dropout2d(dropout)
-        if emb_dim is not None:
-            self.emb_mlp = nn.Sequential(
-                nn.SiLU(),
-                nn.Linear(emb_dim, out_channels * 2)
-            )
 
-    def forward(self, x: Tensor, context: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
         if hasattr(self, 'norm'):
             x = self.norm(x)
-        if hasattr(self, 'emb_mlp') and exists(context):
-            emb = self.emb_mlp(context)
-            scale_shift = rearrange(emb, 'b c -> b c 1 1')
-            scale, shift = scale_shift.chunk(2, dim=1)
-            x = x * (scale + 1) + shift
         x = self.act(x)
         if hasattr(self, 'dropout'):
             x = self.dropout(x)
@@ -223,8 +198,7 @@ class VanillaFeatureEncoder(nn.Module):
             hidden_dims: List[int],
             norm_layer: Optional[str] = None,
             dropout: Optional[float] = 0.0,
-            bias: bool = False,
-            emb_dim: Optional[int] = None) -> None:
+            bias: bool = False) -> None:
         super().__init__()
         ks = 5
         pad = ks // 2
@@ -232,14 +206,14 @@ class VanillaFeatureEncoder(nn.Module):
         self.layers = nn.ModuleList()
         for i in range(len(hidden_dims)):
             self.layers.append(EncoderBlock(in_channels, hidden_dims[i], ks,
-                                            norm_layer, dropout, bias, emb_dim))
+                                            norm_layer, dropout, bias))
             in_channels = hidden_dims[i]
         self.out = nn.Conv2d(in_channels, in_channels, ks, stride=1,
                              padding=pad, bias=bias)
 
-    def forward(self, x: Tensor, context: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         for layer in self.layers:
-            x = layer(x, context)
+            x = layer(x)
         x = self.out(x)
         return x
 
@@ -251,8 +225,7 @@ class VanillaFeatureDecoder(nn.Module):
             hidden_dims: List[int],
             norm_layer: Optional[str] = None,
             dropout: Optional[float] = 0.0,
-            bias: bool = False,
-            emb_dim: Optional[int] = None) -> None:
+            bias: bool = False) -> None:
         super().__init__()
         ks = 6
         pad = 2
@@ -261,13 +234,12 @@ class VanillaFeatureDecoder(nn.Module):
         self.layers = nn.ModuleList()
         for i in range(len(hidden_dims) - 1, 0, -1):
             self.layers.append(DecoderBlock(hidden_dims[i], hidden_dims[i - 1],
-                                            ks, pad, norm_layer, dropout, bias,
-                                            emb_dim))
+                                            ks, pad, norm_layer, dropout, bias))
         self.out = nn.Conv2d(hidden_dims[0], out_channels, 1, bias=False)
 
-    def forward(self, x: Tensor, context: Optional[Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         for layer in self.layers:
-            x = layer(x, context)
+            x = layer(x)
         x = self.out(x)
         return x
 
@@ -280,22 +252,17 @@ class FeatureReconstructor(nn.Module):
                                    keep_feature_prop=config.keep_feature_prop,
                                    pretrained=True)
 
-        if config.condition_on_metadata:
-            self.context_emb = ContextEmbedding(config.emb_dim, config.protected_attr)
-
         config.in_channels = self.extractor.c_feats
         self.enc = VanillaFeatureEncoder(config.in_channels,
                                          config.hidden_dims,
                                          norm_layer="nn.BatchNorm2d",
                                          dropout=config.dropout,
-                                         bias=False,
-                                         emb_dim=config.emb_dim)
+                                         bias=False)
         self.dec = VanillaFeatureDecoder(config.in_channels,
                                          config.hidden_dims,
                                          norm_layer="nn.BatchNorm2d",
                                          dropout=config.dropout,
-                                         bias=False,
-                                         emb_dim=config.emb_dim)
+                                         bias=False)
 
         if config.loss_fn == 'ssim':
             self.loss_fn = SSIMLoss(window_size=5, size_average=False)
@@ -304,11 +271,9 @@ class FeatureReconstructor(nn.Module):
         else:
             raise ValueError(f"Unknown loss function: {config.loss_fn}")
 
-    def forward(self, x: Tensor, context: Optional[Tensor] = None):
+    def forward(self, x: Tensor):
         feats = self.get_feats(x)
-        if hasattr(self, 'context_emb') and exists(context):
-            context = self.context_emb(context)
-        rec = self.get_rec(feats, context)
+        rec = self.get_rec(feats)
         return feats, rec
 
     def get_feats(self, x: Tensor, **kwargs) -> Tensor:
@@ -316,20 +281,20 @@ class FeatureReconstructor(nn.Module):
             feats = self.extractor(x)
         return feats
 
-    def get_rec(self, feats: Tensor, context: Optional[Tensor] = None) -> Tensor:
-        z = self.enc(feats, context)
-        rec = self.dec(z, context)
+    def get_rec(self, feats: Tensor) -> Tensor:
+        z = self.enc(feats)
+        rec = self.dec(z)
         return rec
 
-    def loss(self, x: Tensor, context: Optional[Tensor] = None, **kwargs):
-        feats, rec = self(x, context)
+    def loss(self, x: Tensor, **kwargs):
+        feats, rec = self(x)
         loss = self.loss_fn(rec, feats).mean()
         return {'loss': loss, 'rec_loss': loss}
 
-    def predict_anomaly(self, x: Tensor, context: Optional[Tensor] = None, **kwargs):
+    def predict_anomaly(self, x: Tensor, **kwargs):
         """Returns per image anomaly maps and anomaly scores"""
         # Extract features
-        feats, rec = self(x, context)
+        feats, rec = self(x)
 
         # Compute anomaly map
         anomaly_map = self.loss_fn(rec, feats).mean(1, keepdim=True)

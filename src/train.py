@@ -61,8 +61,6 @@ parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 # Model settings
 parser.add_argument('--model_type', type=str, default='FAE',
                     choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
-parser.add_argument('--condition_on_metadata', default=False, action='store_true')
-parser.add_argument('--emb_dim', type=int, default=16)
 # FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
                     default=[100, 150, 200, 300],
@@ -158,8 +156,8 @@ def train_step(model, optimizer, x, y, meta, device):
     optimizer.zero_grad()
     x = x.to(device)
     y = y.to(device)
-    meta = meta.to(device) if exists(meta) else meta
-    loss_dict = model.loss(x, y=y, context=meta)
+    meta = meta.to(device)
+    loss_dict = model.loss(x, y=y)
     loss = loss_dict['loss']
     loss.backward()
     optimizer.step()
@@ -174,7 +172,6 @@ def train(model, optimizer, train_loader, val_loader, config):
     t_start = time()
     while True:
         for x, y, meta in train_loader:
-            meta = meta if config.condition_on_metadata else None
             step += 1
 
             loss_dict = train_step(model, optimizer, x, y, meta, config.device)
@@ -218,10 +215,10 @@ def val_step(model, x, y, meta, device):
     model.eval()
     x = x.to(device)
     y = y.to(device)
-    meta = meta.to(device) if exists(meta) else meta
+    meta = meta.to(device)
     with torch.no_grad():
-        loss_dict = model.loss(x, y=y, context=meta)
-        anomaly_map, anomaly_score = model.predict_anomaly(x, context=meta)
+        loss_dict = model.loss(x, y=y)
+        anomaly_map, anomaly_score = model.predict_anomaly(x)
     x = x.cpu()
     y = y.cpu()
     anomaly_score = anomaly_score.cpu() if anomaly_score is not None else None
@@ -244,7 +241,6 @@ def validate(config, model, loader, step, mode, log_imgs=False):
         # x, y, anomaly_map: [b, 1, h, w]
         # Compute loss, anomaly map and anomaly score
         for i, k in enumerate(x.keys()):
-            meta[k] = meta[k] if config.condition_on_metadata else None
             loss_dict, anomaly_map, anomaly_score = val_step(model, x[k], y[k], meta[k], device)
 
             # Update metrics
