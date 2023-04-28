@@ -24,7 +24,7 @@ parser.add_argument('--debug', action='store_true', help='Debug mode')
 
 # Data settings
 parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats'])
-parser.add_argument('--protected_attr', type=str, default='age',
+parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--train_age', type=str, default='avg',
@@ -59,7 +59,7 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='DeepSVDD',
+parser.add_argument('--model_type', type=str, default='FAE',
                     choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
 parser.add_argument('--condition_on_metadata', default=False, action='store_true')
 parser.add_argument('--emb_dim', type=int, default=16)

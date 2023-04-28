@@ -27,7 +27,7 @@ class ResNet18(nn.Module):
         loss = F.binary_cross_entropy_with_logits(pred, y.float())
         return {'loss': loss}
 
-    def predict_anomaly(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def predict_anomaly(self, x: Tensor, **kwargs) -> Tuple[Tensor, Tensor]:
         with torch.no_grad():
             pred = self(x)
         anomaly_scores = torch.sigmoid(pred)

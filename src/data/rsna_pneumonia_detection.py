@@ -9,6 +9,8 @@ from tqdm import tqdm
 
 from src import RSNA_DIR
 
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 CLASS_MAPPING = {
     'Normal': 0,  # 8851, female: 2905, male: 4946, age mean: 44.94, std: 16.39, min: 2, max: 155
     'Lung Opacity': 1,  # 6012, female: 2502, male: 3510, age mean: 45.58, std: 17.46, min: 1, max: 92
@@ -51,7 +53,7 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
         })
 
     metadata = pd.DataFrame.from_dict(metadata)
-    metadata.to_csv(os.path.join(rsna_dir, 'train_metadata.csv'), index=False)
+    metadata.to_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'), index=False)
 
 
 def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
@@ -60,7 +62,7 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
     assert anomaly in ['lungOpacity', 'otherAnomaly']
     """Naive train/val/test split."""
     # Load metadata
-    metadata = pd.read_csv(os.path.join(rsna_dir, 'train_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -121,7 +123,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     female_percent = 1 - male_percent
 
     # Load metadata
-    metadata = pd.read_csv(os.path.join(rsna_dir, 'train_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -207,7 +209,7 @@ def load_rsna_age_split(rsna_dir: str = RSNA_DIR,
     assert anomaly in ['lungOpacity', 'otherAnomaly']
 
     # Load metadata
-    metadata = pd.read_csv(os.path.join(rsna_dir, 'train_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -308,5 +310,6 @@ def load_rsna_age_split(rsna_dir: str = RSNA_DIR,
 
 
 if __name__ == '__main__':
-    download_rsna()
-    extract_metadata()
+    # download_rsna()
+    # extract_metadata()
+    pass
