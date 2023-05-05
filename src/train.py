@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 from time import time
 
+import pandas as pd
 import torch
 import wandb
 
@@ -13,7 +14,7 @@ from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
 from src.models.supervised.resnet import ResNet18
 from src.utils.metrics import AvgDictMeter, build_metrics
-from src.utils.utils import seed_everything, exists
+from src.utils.utils import seed_everything
 
 """"""""""""""""""""""""""""""""""" Config """""""""""""""""""""""""""""""""""
 
@@ -21,6 +22,9 @@ parser = ArgumentParser()
 # General script settings
 parser.add_argument('--seed', type=int, default=42, help='Random seed')
 parser.add_argument('--debug', action='store_true', help='Debug mode')
+
+# Experiment settings
+parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
 parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats'])
@@ -30,7 +34,7 @@ parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--train_age', type=str, default='avg',
                     choices=['young', 'avg', 'old'])
 parser.add_argument('--img_size', type=int, default=128, help='Image size')
-parser.add_argument('--num_workers', type=int, default=4,
+parser.add_argument('--num_workers', type=int, default=0,
                     help='Number of workers for dataloader')
 
 # Logging settings
@@ -110,6 +114,7 @@ elif config.model_type == 'ResNet18':
 else:
     raise ValueError(f'Unknown model type {config.model_type}')
 model = model.to(config.device)
+compiled_model = torch.compile(model)
 
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
@@ -138,8 +143,6 @@ print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 if not config.debug:
     os.makedirs(config.log_dir, exist_ok=True)
 wandb_tags = [config.model_type, config.dataset, config.protected_attr]
-if config.condition_on_metadata:
-    wandb_tags.append('conditioned')
 wandb.init(
     project='unsupervised-fairness',
     entity='felix-meissen',
@@ -193,7 +196,7 @@ def train(model, optimizer, train_loader, val_loader, config):
 
             if step % config.val_frequency == 0:
                 log_imgs = step % config.log_img_freq == 0
-                val_results = validate(config, model, val_loader, step, 'val',
+                val_results = validate(config, model, val_loader, step,
                                        log_imgs)
                 # Log to w&b
                 wandb.log(val_results, step=step)
@@ -204,7 +207,7 @@ def train(model, optimizer, train_loader, val_loader, config):
 
                 # Final validation
                 print("Final validation...")
-                validate(config, model, val_loader, step, 'val', False)
+                validate(config, model, val_loader, step, False)
                 return model
 
         i_epoch += 1
@@ -226,15 +229,13 @@ def val_step(model, x, y, meta, device):
     return loss_dict, anomaly_map, anomaly_score
 
 
-def validate(config, model, loader, step, mode, log_imgs=False):
-    assert mode in ['val', 'test']
+def validate(config, model, loader, step, log_imgs=False):
     i_step = 0
     device = next(model.parameters()).device
     x, y, meta = next(iter(loader))
     metrics = build_metrics(subgroup_names=list(x.keys()))
     losses = defaultdict(AvgDictMeter)
     imgs = defaultdict(list)
-    anomaly_scores = defaultdict(list)
     anomaly_maps = defaultdict(list)
 
     for x, y, meta in loader:
@@ -248,7 +249,6 @@ def validate(config, model, loader, step, mode, log_imgs=False):
             scores_and_group = torch.stack([anomaly_score, group], dim=1)
             metrics.update(scores_and_group, y[k])
             losses[k].add(loss_dict)
-            anomaly_scores[k].append(anomaly_score)
 
             imgs[k].append(x[k])
             if anomaly_map is not None:
@@ -262,7 +262,6 @@ def validate(config, model, loader, step, mode, log_imgs=False):
 
     # Compute and flatten metrics and losses
     metrics_c = metrics.compute()
-    anomaly_scores_c = {f'{k}_anomaly_scores': torch.cat(v).mean() for k, v in anomaly_scores.items()}
     losses_c = {k: v.compute() for k, v in losses.items()}
     losses_c = {f'{k}_{m}': v[m] for k, v in losses_c.items() for m in v.keys()}
     if log_imgs:
@@ -272,11 +271,11 @@ def validate(config, model, loader, step, mode, log_imgs=False):
         wandb.log(imgs_log, step=step)
 
     # Compute metrics
-    results = {**metrics_c, **losses_c, **anomaly_scores_c}
+    results = {**metrics_c, **losses_c}
 
     # Print validation results
-    print(f"\n{mode} results:")
-    log_msg = " - ".join([f'{k}: {v:.4f}' for k, v in results.items()])
+    print("\nval results:")
+    log_msg = "\n".join([f'{k}: {v:.4f}' for k, v in results.items()])
     log_msg += "\n"
     print(log_msg)
 
@@ -285,11 +284,50 @@ def validate(config, model, loader, step, mode, log_imgs=False):
 
 def test(config, model, loader):
     print("Testing...")
-    test_results = validate(config, model, loader, 0, 'test', True)
-    for k, v in test_results.items():
+
+    device = next(model.parameters()).device
+    x, y, meta = next(iter(loader))
+    metrics = build_metrics(subgroup_names=list(x.keys()))
+    losses = defaultdict(AvgDictMeter)
+
+    for x, y, meta in loader:
+        # x, y, anomaly_map: [b, 1, h, w]
+        # Compute loss, anomaly map and anomaly score
+        for i, k in enumerate(x.keys()):
+            loss_dict, _, anomaly_score = val_step(model, x[k], y[k], meta[k], device)
+
+            # Update metrics
+            group = torch.tensor([i] * len(anomaly_score))
+            scores_and_group = torch.stack([anomaly_score, group], dim=1)
+            metrics.update(scores_and_group, y[k])
+            losses[k].add(loss_dict)
+
+    # Compute and flatten metrics and losses
+    metrics_c = metrics.compute(bootstrap=True)
+    losses_c = {k: v.compute() for k, v in losses.items()}
+    losses_c = {f'{k}_{m}': v[m] for k, v in losses_c.items() for m in v.keys()}
+
+    # Compute metrics
+    results = {**metrics_c, **losses_c}
+
+    # Print validation results
+    print("\nTest results:")
+    log_msg = "\n".join([f'{k}: {v:.4f}' for k, v in results.items()])
+    log_msg += "\n"
+    print(log_msg)
+
+    # Write test results to wandb summary
+    for k, v in results.items():
         wandb.run.summary[k] = v
+
+    # Save test results to csv
+    if not config.debug:
+        results = {k: v.item() for k, v in results.items()}
+        results = {**results, **vars(config)}
+        csv_path = os.path.join(config.log_dir, 'test_results.csv')
+        pd.DataFrame(results, index=[0]).to_csv(csv_path, index=False)
 
 
 if __name__ == '__main__':
-    model = train(model, optimizer, train_loader, val_loader, config)
-    test(config, model, test_loader)
+    model = train(compiled_model, optimizer, train_loader, val_loader, config)
+    test(config, compiled_model, test_loader)
