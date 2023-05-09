@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from torch import Tensor
+from torch import Tensor, Generator
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
@@ -9,7 +9,7 @@ from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
 from src.data.camcan_brats import (load_camcan_brats_age_split,
                                    load_camcan_only_age_split)
 from src.data.data_utils import load_dicom_img
-from src.data.rsna_pneumonia_detection import (load_rsna_age_split,
+from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
                                                load_rsna_gender_split,
                                                load_rsna_naive_split)
 
@@ -114,7 +114,7 @@ def get_dataloaders(dataset: str,
         if protected_attr == 'none':
             data, labels, meta = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
         elif protected_attr == 'age':
-            data, labels, meta = load_rsna_age_split(RSNA_DIR, train_age=train_age, for_supervised=supervised)
+            data, labels, meta = load_rsna_age_two_split(RSNA_DIR, train_age=train_age, for_supervised=supervised)
         elif protected_attr == 'sex':
             data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
         else:
@@ -171,10 +171,21 @@ def get_dataloaders(dataset: str,
     test_dataset = anomal_ds(test_data, test_labels, test_meta)
 
     # Create dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        generator=Generator().manual_seed(2147483647))
     dl = partial(DataLoader, batch_size=batch_size, num_workers=num_workers, collate_fn=group_collate_fn)
-    val_dataloader = dl(val_dataset, shuffle=False)
-    test_dataloader = dl(test_dataset, shuffle=False)
+    val_dataloader = dl(
+        val_dataset,
+        shuffle=False,
+        generator=Generator().manual_seed(2147483647))
+    test_dataloader = dl(
+        test_dataset,
+        shuffle=False,
+        generator=Generator().manual_seed(2147483647))
 
     return (train_dataloader,
             val_dataloader,

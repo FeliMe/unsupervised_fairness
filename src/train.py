@@ -14,14 +14,16 @@ from src.models.FAE.fae import FeatureReconstructor
 from src.models.RD.reverse_distillation import ReverseDistillation
 from src.models.supervised.resnet import ResNet18
 from src.utils.metrics import AvgDictMeter, build_metrics
-from src.utils.utils import seed_everything
+from src.utils.utils import seed_everything, save_checkpoint
 
 """"""""""""""""""""""""""""""""""" Config """""""""""""""""""""""""""""""""""
 
 parser = ArgumentParser()
 # General script settings
-parser.add_argument('--seed', type=int, default=42, help='Random seed')
+parser.add_argument('--initial_seed', type=int, default=1, help='Random seed')
+parser.add_argument('--num_seeds', type=int, default=1, help='Number of random seed')
 parser.add_argument('--debug', action='store_true', help='Debug mode')
+parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 
 # Experiment settings
 parser.add_argument('--experiment_name', type=str, default='')
@@ -31,8 +33,8 @@ parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'cam
 parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
-parser.add_argument('--train_age', type=str, default='avg',
-                    choices=['young', 'avg', 'old'])
+parser.add_argument('--train_age', type=str, default='young',
+                    choices=['young', 'old'])
 parser.add_argument('--img_size', type=int, default=128, help='Image size')
 parser.add_argument('--num_workers', type=int, default=0,
                     help='Number of workers for dataloader')
@@ -83,9 +85,8 @@ parser.add_argument('--repr_dim', type=int, default=256,
 config = parser.parse_args()
 
 config.supervised = config.model_type == 'ResNet18'
-
-# Select training device
 config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config.seed = config.initial_seed
 
 if config.debug:
     config.num_workers = 0
@@ -93,32 +94,6 @@ if config.debug:
     config.val_frequency = 1
     config.val_steps = 1
     config.log_frequency = 1
-
-
-""""""""""""""""""""""""""""""" Reproducibility """""""""""""""""""""""""""""""
-seed_everything(config.seed)
-
-
-""""""""""""""""""""""""""""""""" Init model """""""""""""""""""""""""""""""""
-
-
-print("Initializing model...")
-if config.model_type == 'FAE':
-    model = FeatureReconstructor(config)
-elif config.model_type == 'RD':
-    model = ReverseDistillation(config)
-elif config.model_type == 'DeepSVDD':
-    model = DeepSVDD(config)
-elif config.model_type == 'ResNet18':
-    model = ResNet18(config)
-else:
-    raise ValueError(f'Unknown model type {config.model_type}')
-model = model.to(config.device)
-compiled_model = torch.compile(model)
-
-# Init optimizer
-optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
-                             weight_decay=config.weight_decay)
 
 
 """"""""""""""""""""""""""""""""" Load data """""""""""""""""""""""""""""""""
@@ -139,19 +114,32 @@ train_loader, val_loader, test_loader = get_dataloaders(
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 
 
-""""""""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""""
-if not config.debug:
-    os.makedirs(config.log_dir, exist_ok=True)
-wandb_tags = [config.model_type, config.dataset, config.protected_attr]
-wandb.init(
-    project='unsupervised-fairness',
-    entity='felix-meissen',
-    dir=config.log_dir,
-    name=config.log_dir.lstrip('logs/'),
-    tags=wandb_tags,
-    config=config,
-    mode="disabled" if config.debug else "online"
-)
+""""""""""""""""""""""""""""""""" Init model """""""""""""""""""""""""""""""""
+
+
+def init_model(config):
+    print("Initializing model...")
+    if config.model_type == 'FAE':
+        model = FeatureReconstructor(config)
+    elif config.model_type == 'RD':
+        model = ReverseDistillation(config)
+    elif config.model_type == 'DeepSVDD':
+        model = DeepSVDD(config)
+    elif config.model_type == 'ResNet18':
+        model = ResNet18(config)
+    else:
+        raise ValueError(f'Unknown model type {config.model_type}')
+    model = model.to(config.device)
+    compiled_model = torch.compile(model)
+
+    # Init optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
+                                 weight_decay=config.weight_decay)
+
+    return model, compiled_model, optimizer
+
+
+""""""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""
 
 
 def train_step(model, optimizer, x, y, meta, device):
@@ -167,7 +155,28 @@ def train_step(model, optimizer, x, y, meta, device):
     return loss_dict
 
 
-def train(model, optimizer, train_loader, val_loader, config):
+def train(train_loader, val_loader, config, log_dir):
+    # Reproducibility
+    print(f"Setting seed to {config.seed}...")
+    seed_everything(config.seed)
+
+    # Init model
+    _, model, optimizer = init_model(config)
+
+    # Init logging
+    if not config.debug:
+        os.makedirs(log_dir, exist_ok=True)
+    wandb_tags = [config.model_type, config.dataset, config.protected_attr]
+    wandb.init(
+        project='unsupervised-fairness',
+        entity='felix-meissen',
+        dir=log_dir,
+        name=log_dir.lstrip('logs/'),
+        tags=wandb_tags,
+        config=config,
+        mode="disabled" if (config.debug or config.disable_wandb) else "online"
+    )
+
     print('Starting training...')
     step = 0
     i_epoch = 0
@@ -212,6 +221,9 @@ def train(model, optimizer, train_loader, val_loader, config):
 
         i_epoch += 1
         print(f'Finished epoch {i_epoch}, ({step} iterations)')
+
+
+""""""""""""""""""""""""""""""""" Validation """""""""""""""""""""""""""""""""
 
 
 def val_step(model, x, y, meta, device):
@@ -279,10 +291,19 @@ def validate(config, model, loader, step, log_imgs=False):
     log_msg += "\n"
     print(log_msg)
 
+    # Save checkpoint
+    if not config.debug:
+        ckpt_name = os.path.join(log_dir, 'ckpt_last.pth')
+        print(f'Saving checkpoint to {ckpt_name}')
+        save_checkpoint(ckpt_name, model, step, vars(config))
+
     return results
 
 
-def test(config, model, loader):
+""""""""""""""""""""""""""""""""" Testing """""""""""""""""""""""""""""""""
+
+
+def test(config, model, loader, log_dir):
     print("Testing...")
 
     device = next(model.parameters()).device
@@ -307,12 +328,18 @@ def test(config, model, loader):
     losses_c = {k: v.compute() for k, v in losses.items()}
     losses_c = {f'{k}_{m}': v[m] for k, v in losses_c.items() for m in v.keys()}
 
-    # Compute metrics
-    results = {**metrics_c, **losses_c}
+    # Compute mean and std over bootstrap runs
+    metrics_c_agg = {}
+    for k, v in metrics_c.items():
+        metrics_c_agg[k] = v.mean()
+        metrics_c_agg[f'{k}_lower'] = torch.quantile(v, 0.025)
+        metrics_c_agg[f'{k}_upper'] = torch.quantile(v, 0.975)
+
+    results = {**metrics_c_agg, **losses_c}
 
     # Print validation results
     print("\nTest results:")
-    log_msg = "\n".join([f'{k}: {v:.4f}' for k, v in results.items()])
+    log_msg = "\n".join([f'{k}: {v.mean():.4f}' for k, v in results.items()])
     log_msg += "\n"
     print(log_msg)
 
@@ -322,12 +349,20 @@ def test(config, model, loader):
 
     # Save test results to csv
     if not config.debug:
-        results = {k: v.item() for k, v in results.items()}
-        results = {**results, **vars(config)}
-        csv_path = os.path.join(config.log_dir, 'test_results.csv')
-        pd.DataFrame(results, index=[0]).to_csv(csv_path, index=False)
+        # os.makedirs(log_dir, exist_ok=True)
+        csv_path = os.path.join(log_dir, 'test_results.csv')
+        df = pd.DataFrame(metrics_c)
+        for k, v in vars(config).items():
+            df[k] = pd.Series([v])
+        df.to_csv(csv_path, index=False)
+
+
+""""""""""""""""""""""""""""""""" Main """""""""""""""""""""""""""""""""
 
 
 if __name__ == '__main__':
-    model = train(compiled_model, optimizer, train_loader, val_loader, config)
-    test(config, compiled_model, test_loader)
+    for i in range(config.num_seeds):
+        config.seed = config.initial_seed + i
+        log_dir = os.path.join(config.log_dir, f'seed_{config.seed}')
+        model = train(train_loader, val_loader, config, log_dir)
+        test(config, model, test_loader, log_dir)

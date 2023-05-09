@@ -6,15 +6,15 @@ from typing import Any, Dict
 
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 
 def seed_everything(seed):
-    random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -25,6 +25,17 @@ def exists(val):
 
 def default(val, d):
     return val if exists(val) else d
+
+
+def save_checkpoint(path: str, model: nn.Module, step: int, config: Dict):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+    checkpoint = {
+        'model': model.state_dict(),
+        'config': config,
+        'step': step
+    }
+    torch.save(checkpoint, path)
 
 
 class TensorboardLogger(SummaryWriter):

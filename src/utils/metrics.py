@@ -1,3 +1,6 @@
+"""
+Bootstrapping method from https://sebastianraschka.com/blog/2022/confidence-intervals-for-ml.html
+"""
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
@@ -69,8 +72,8 @@ class AnomalyScore(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         if do_bootstrap:
             fake_targets = torch.zeros_like(preds)
-            anomaly_score, lower, upper = bootstrap(preds, fake_targets, lambda x, y: x.mean())
-            return anomaly_score, lower, upper
+            bootstrap_scores = bootstrap(preds, fake_targets, lambda x, y: x.mean())
+            return bootstrap_scores
         else:
             anomaly_score = preds.mean()
             return anomaly_score
@@ -78,13 +81,7 @@ class AnomalyScore(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                anomaly_score, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_anomaly_score'] = anomaly_score
-                res[f'{subgroup}_anomaly_score_lower'] = lower
-                res[f'{subgroup}_anomaly_score_upper'] = upper
-            else:
-                res[f'{subgroup}_anomaly_score'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_anomaly_score'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -139,10 +136,8 @@ class AveragePrecision(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         preds_bin = (preds[:, None] > thresholds).long()  # [N_s, n_thresholds]
         if do_bootstrap:
-            ap, lower, upper = bootstrap(preds_bin, targets, self.compute_ap)
-            lower = lower.clamp_min(0)
-            upper = upper.clamp_max(1)
-            return ap, lower, upper
+            bootstrap_scores = bootstrap(preds_bin, targets, self.compute_ap)
+            return bootstrap_scores
         else:
             ap = self.compute_ap(preds_bin, targets)
             return ap
@@ -150,13 +145,7 @@ class AveragePrecision(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                ap, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_ap'] = ap
-                res[f'{subgroup}_ap_lower'] = lower
-                res[f'{subgroup}_ap_upper'] = upper
-            else:
-                res[f'{subgroup}_ap'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_ap'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -207,10 +196,8 @@ class TPR_at_FPR(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         preds_bin = (preds > threshold).long()  # [N_s]
         if do_bootstrap:
-            tpr, lower, upper = bootstrap(preds_bin, targets, self.compute_tpr)
-            lower = lower.clamp_min(0)
-            upper = upper.clamp_max(1)
-            return tpr, lower, upper
+            bootstrap_scores = bootstrap(preds_bin, targets, self.compute_tpr)
+            return bootstrap_scores
         else:
             tpr = self.compute_tpr(preds_bin, targets)
             return tpr
@@ -218,13 +205,7 @@ class TPR_at_FPR(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                tpr, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_tpr@{self.xfpr}'] = tpr
-                res[f'{subgroup}_tpr@{self.xfpr}_lower'] = lower
-                res[f'{subgroup}_tpr@{self.xfpr}_upper'] = upper
-            else:
-                res[f'{subgroup}_tpr@{self.xfpr}'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_tpr@{self.xfpr}'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -270,10 +251,8 @@ class FPR_at_TPR(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         preds_bin = (preds > threshold).long()  # [N_s]
         if do_bootstrap:
-            fpr, lower, upper = bootstrap(preds_bin, targets, self.compute_fpr)
-            lower = lower.clamp_min(0)
-            upper = upper.clamp_max(1)
-            return fpr, lower, upper
+            bootstrap_scores = bootstrap(preds_bin, targets, self.compute_fpr)
+            return bootstrap_scores
         else:
             fpr = self.compute_fpr(preds_bin, targets)
             return fpr
@@ -281,13 +260,7 @@ class FPR_at_TPR(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                tpr, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_fpr@{self.xtpr}'] = tpr
-                res[f'{subgroup}_fpr@{self.xtpr}_lower'] = lower
-                res[f'{subgroup}_fpr@{self.xtpr}_upper'] = upper
-            else:
-                res[f'{subgroup}_fpr@{self.xtpr}'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_fpr@{self.xtpr}'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -336,10 +309,8 @@ class cDC(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         # Compute cDC
         if do_bootstrap:
-            cDC, lower, upper = bootstrap(preds, targets, self.compute_cDC)
-            lower = lower.clamp_min(0)
-            upper = upper.clamp_max(1)
-            return cDC, lower, upper
+            bootstrap_scores = bootstrap(preds, targets, self.compute_cDC)
+            return bootstrap_scores
         else:
             cDC = self.compute_cDC(preds, targets)
             return cDC
@@ -347,13 +318,7 @@ class cDC(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                cDC, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_cDC'] = cDC
-                res[f'{subgroup}_cDC_lower'] = lower
-                res[f'{subgroup}_cDC_upper'] = upper
-            else:
-                res[f'{subgroup}_cDC'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_cDC'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -409,10 +374,8 @@ class AverageDSC(Metric):
         preds = preds[preds[:, 1] == subgroup, 0]  # [N_s]
         preds_bin = (preds[:, None] > thresholds).long()  # [N_s, n_thresholds]
         if do_bootstrap:
-            aDSC, lower, upper = bootstrap(preds_bin, targets, self.compute_aDSC)
-            lower = lower.clamp_min(0)
-            upper = upper.clamp_max(1)
-            return aDSC, lower, upper
+            bootstrap_scores = bootstrap(preds_bin, targets, self.compute_aDSC)
+            return bootstrap_scores
         else:
             aDSC = self.compute_aDSC(preds_bin, targets)
             return aDSC
@@ -420,13 +383,7 @@ class AverageDSC(Metric):
     def compute(self, bootstrap: bool = False, **kwargs):
         res = {}
         for i, subgroup in enumerate(self.subgroup_names):
-            if bootstrap:
-                cDC, lower, upper = self.compute_subgroup(i, bootstrap)
-                res[f'{subgroup}_aDSC'] = cDC
-                res[f'{subgroup}_aDSC_lower'] = lower
-                res[f'{subgroup}_aDSC_upper'] = upper
-            else:
-                res[f'{subgroup}_aDSC'] = self.compute_subgroup(i, bootstrap)
+            res[f'{subgroup}_aDSC'] = self.compute_subgroup(i, bootstrap)
         return res
 
 
@@ -486,8 +443,4 @@ def bootstrap(preds: Tensor, targets: Tensor, metric_fn: Callable, n_bootstrap: 
         metric_boot = metric_fn(preds[pred_idx], targets[pred_idx])
         metrics.append(metric_boot)
 
-    metrics = torch.stack(metrics)
-    mean = metrics.mean()
-    lower = torch.quantile(metrics, 0.025, interpolation='lower')
-    upper = torch.quantile(metrics, 0.975, interpolation='higher')
-    return mean, lower, upper
+    return torch.stack(metrics)
