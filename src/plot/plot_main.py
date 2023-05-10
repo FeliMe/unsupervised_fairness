@@ -127,7 +127,7 @@ def plot_metric(
     # Plot
     width = 0.25
     ind = np.arange(len(data[attr_key].values))
-    centers = ind + (len(metrics) // 2) * width
+    centers = ind + (len(metrics) // 2) * width - width / 2
     bars = []
     mini = math.inf
     maxi = -math.inf
@@ -230,4 +230,66 @@ if __name__ == '__main__':
         ylabel="anomaly_score",
         title="FAE anomaly_score on RSNA for different proportions of male patients in training",
         plt_name="fae_rsna_sex_anomaly_score.png"
+    )
+    # FAE rsna age
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_cDC", "test/lungOpacity_old_cDC"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="cDC",
+        title="FAE cDC on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_cDC.png"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_aDSC", "test/lungOpacity_old_aDSC"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="aDSC",
+        title="FAE aDSC on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_aDSC.png"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_ap", "test/lungOpacity_old_ap"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="ap",
+        title="FAE ap on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_ap.png"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_tpr@0.05", "test/lungOpacity_old_tpr@0.05"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="tpr@0.05fpr",
+        title="FAE tpr@0.05fpr on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_tpr@005fpr.png"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_fpr@0.95", "test/lungOpacity_old_fpr@0.95"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="fpr@0.95tpr",
+        title="FAE fpr@0.95tpr on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_fpr@095tpr.png"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/lungOpacity_young_anomaly_score", "test/lungOpacity_old_anomaly_score"],
+        protected_attr='age',
+        attr_key='train_age',
+        xlabel="age of subjects in training set",
+        ylabel="anomaly_scores",
+        title="FAE anomaly_scores on RSNA for training with young or old patients",
+        plt_name="fae_rsna_age_anomaly_scores.png"
     )
