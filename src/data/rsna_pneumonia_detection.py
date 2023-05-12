@@ -196,15 +196,17 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
 
 
 def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
-                            train_age: float = 'young',
+                            old_percent: float = 0.5,
                             anomaly: str = 'lungOpacity',
                             for_supervised: bool = False):
-    """Load data with age balanced val and test sets. Training is either young or old.
+    """Load data with age balanced val and test sets. Training fraction of old
+    and young patients can be specified.
     lo = lung opacity
     oa = other anomaly
     """
-    assert train_age in ['young', 'old']
+    assert 0.0 <= old_percent <= 1.0
     assert anomaly in ['lungOpacity', 'otherAnomaly']
+    young_percent = 1 - old_percent
 
     # Load metadata
     metadata = pd.read_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'))
@@ -230,47 +232,45 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
 
     # Save 100 young and 100 old samples for every label for validation and test
     # Normal
-    vc_normal_young = normal_young.sample(n=50, random_state=42)
-    vc_normal_old = normal_old.sample(n=50, random_state=42)
-    # Anomalous
-    vc_young = young.sample(n=100, random_state=42)
-    vc_old = old.sample(n=100, random_state=42)
-    val_young = vc_young.iloc[:50, :]
-    val_old = vc_old.iloc[:50, :]
-    test_young = vc_young.iloc[50:, :]
-    test_old = vc_old.iloc[50:, :]
-    # Rest of anomal data
-    rest_young = young[~young.patientId.isin(vc_young.patientId)]
-    rest_old = old[~old.patientId.isin(vc_old.patientId)]
-
+    val_test_normal_young = normal_young.sample(n=50, random_state=42)
+    val_test_normal_old = normal_old.sample(n=50, random_state=42)
+    val_test_young = young.sample(n=100, random_state=42)
+    val_test_old = old.sample(n=100, random_state=42)
+    val_young = val_test_young.iloc[:50, :]
+    val_old = val_test_old.iloc[:50, :]
+    test_young = val_test_young.iloc[50:, :]
+    test_old = val_test_old.iloc[50:, :]
     # Aggregate validation and test sets and shuffle
-    val_young = pd.concat([vc_normal_young, val_young]).sample(frac=1, random_state=42).reset_index(drop=True)
-    val_old = pd.concat([vc_normal_old, val_old]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_young = pd.concat([vc_normal_young, test_young]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_old = pd.concat([vc_normal_old, test_old]).sample(frac=1, random_state=42).reset_index(drop=True)
+    val_young = pd.concat([val_test_normal_young, val_young]).sample(frac=1, random_state=42).reset_index(drop=True)
+    val_old = pd.concat([val_test_normal_old, val_old]).sample(frac=1, random_state=42).reset_index(drop=True)
+    test_young = pd.concat([val_test_normal_young, test_young]).sample(frac=1, random_state=42).reset_index(drop=True)
+    test_old = pd.concat([val_test_normal_old, test_old]).sample(frac=1, random_state=42).reset_index(drop=True)
+    # Rest of anomal data
+    rest_young = young[~young.patientId.isin(val_test_young.patientId)]
+    rest_old = old[~old.patientId.isin(val_test_old.patientId)]
 
     # Rest for training
-    rest_normal_young = normal_young[~normal_young.patientId.isin(vc_normal_young.patientId)]
-    rest_normal_old = normal_old[~normal_old.patientId.isin(vc_normal_old.patientId)]
+    rest_normal_young = normal_young[~normal_young.patientId.isin(val_test_normal_young.patientId)]
+    rest_normal_old = normal_old[~normal_old.patientId.isin(val_test_normal_old.patientId)]
     n_samples = min(len(rest_normal_young), len(rest_normal_old))
-    train_young = rest_normal_young.sample(n=n_samples, random_state=42)
-    train_old = rest_normal_old.sample(n=n_samples, random_state=42)
+    n_young = int(n_samples * young_percent)
+    n_old = int(n_samples * old_percent)
+    train_young = rest_normal_young.sample(n=n_young, random_state=42)
+    train_old = rest_normal_old.sample(n=n_old, random_state=42)
 
     # Mix train with anomal data if supervised
     if for_supervised:
-        n_young = len(train_young)
-        train_young = pd.concat([train_young[:n_young // 2], rest_young.sample(n=n_young // 2, random_state=42)])
-        n_old = len(train_old)
-        train_old = pd.concat([train_old[:n_old // 2], rest_old.sample(n=n_old // 2, random_state=42)])
+        n_young = len(train_young) // 2
+        n_old = len(train_old) // 2
+        train_anomal_young = rest_young.sample(n_young, random_state=42)
+        train_anomal_old = rest_old.sample(n_old, random_state=42)
+        train_young = pd.concat([train_young[:n_young], train_anomal_young])
+        train_old = pd.concat([train_old[:n_old], train_anomal_old])
 
-    if train_age == 'young':
-        train = train_young
-    elif train_age == 'old':
-        train = train_old
-    else:
-        raise ValueError("train_age must be 'young' or 'old'.")
+    # Aggregate training set and shuffle
+    train = pd.concat([train_young, train_old]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-    print(f"Using {n_samples} {train_age} samples for training.")
+    print(f"Using {n_young} young and {n_old} old samples for training.")
 
     # Return
     filenames = {}
@@ -295,8 +295,7 @@ def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
                               train_age: float = 'avg',
                               anomaly: str = 'lungOpacity',
                               for_supervised: bool = False):
-    """Load data with gender balanced val and test sets. The ratio between male
-    and female samples in the training set can be controlled.
+    """Load data with age balanced val and test sets. Training is either young or old.
     lo = lung opacity
     oa = other anomaly
     """

@@ -581,4 +581,4 @@ if __name__ == '__main__':
     labels = torch.tensor([1, 0, 0, 1, 1, 0, 1])
     subgroups = torch.tensor([0, 1, 0, 0, 1, 1, 0])
     metrics.update(subgroups, scores, labels)
-    print(metrics.compute(do_bootstrap=True))
+    print(metrics.compute(do_bootstrap=False))

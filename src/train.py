@@ -30,21 +30,20 @@ parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
 parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats'])
-parser.add_argument('--protected_attr', type=str, default='sex',
+parser.add_argument('--protected_attr', type=str, default='age',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
-parser.add_argument('--train_age', type=str, default='young',
-                    choices=['young', 'old'])
+parser.add_argument('--old_percent', type=float, default=0.5)
 parser.add_argument('--img_size', type=int, default=128, help='Image size')
 parser.add_argument('--num_workers', type=int, default=0,
                     help='Number of workers for dataloader')
 
 # Logging settings
-parser.add_argument('--val_frequency', type=int, default=200,
+parser.add_argument('--val_frequency', type=int, default=500,
                     help='Validation frequency')
 parser.add_argument('--val_steps', type=int, default=50,
                     help='Steps per validation')
-parser.add_argument('--log_frequency', type=int, default=50,
+parser.add_argument('--log_frequency', type=int, default=100,
                     help='Logging frequency')
 parser.add_argument('--log_img_freq', type=int, default=1000)
 parser.add_argument('--num_imgs_log', type=int, default=8)
@@ -108,7 +107,7 @@ train_loader, val_loader, test_loader = get_dataloaders(
     num_workers=config.num_workers,
     protected_attr=config.protected_attr,
     male_percent=config.male_percent,
-    train_age=config.train_age,
+    old_percent=config.old_percent,
     supervised=config.supervised
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
@@ -309,6 +308,9 @@ def test(config, model, loader, log_dir):
     x, y, meta = next(iter(loader))
     metrics = build_metrics(subgroup_names=list(x.keys()))
     losses = defaultdict(AvgDictMeter)
+    anomaly_scores = []
+    labels = []
+    subgroup_names = []
 
     for x, y, meta in loader:
         # x, y, anomaly_map: [b, 1, h, w]
@@ -320,6 +322,15 @@ def test(config, model, loader, log_dir):
             group = torch.tensor([i] * len(anomaly_score))
             metrics.update(group, anomaly_score, y[k])
             losses[k].add(loss_dict)
+
+            # Store anomaly scores, labels, and subgroup names
+            anomaly_scores.append(anomaly_score)
+            labels.append(y[k])
+            subgroup_names += [k] * len(anomaly_score)
+
+    # Aggregate anomaly scores, labels, and subgroup names
+    anomaly_scores = torch.cat(anomaly_scores)
+    labels = torch.cat(labels)
 
     # Compute and flatten metrics and losses
     metrics_c = metrics.compute(do_bootstrap=True)
@@ -347,11 +358,17 @@ def test(config, model, loader, log_dir):
 
     # Save test results to csv
     if not config.debug:
-        # os.makedirs(log_dir, exist_ok=True)
         csv_path = os.path.join(log_dir, 'test_results.csv')
         df = pd.DataFrame(metrics_c)
         for k, v in vars(config).items():
             df[k] = pd.Series([v])
+        df.to_csv(csv_path, index=False)
+
+    # Save anomaly scores and labels to csv
+    if not config.debug:
+        # os.makedirs(log_dir, exist_ok=True)
+        csv_path = os.path.join(log_dir, 'anomaly_scores.csv')
+        df = pd.DataFrame({'anomaly_score': anomaly_scores, 'label': labels, 'subgroup_name': subgroup_names})
         df.to_csv(csv_path, index=False)
 
 

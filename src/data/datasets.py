@@ -103,7 +103,7 @@ def get_dataloaders(dataset: str,
                     protected_attr: str,
                     num_workers: Optional[int] = 4,
                     male_percent: Optional[float] = 0.5,
-                    train_age: Optional[str] = 'avg',
+                    old_percent: Optional[float] = 0.5,
                     supervised: Optional[bool] = False) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Returns dataloaders for the RSNA dataset.
@@ -114,7 +114,7 @@ def get_dataloaders(dataset: str,
         if protected_attr == 'none':
             data, labels, meta = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
         elif protected_attr == 'age':
-            data, labels, meta = load_rsna_age_two_split(RSNA_DIR, train_age=train_age, for_supervised=supervised)
+            data, labels, meta = load_rsna_age_two_split(RSNA_DIR, old_percent=old_percent, for_supervised=supervised)
         elif protected_attr == 'sex':
             data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
         else:
@@ -128,7 +128,7 @@ def get_dataloaders(dataset: str,
         elif protected_attr == 'age':
             data, labels, meta = load_camcan_brats_age_split(CAMCAN_DIR, BRATS_DIR,
                                                              sequence='T2',
-                                                             train_age=train_age,
+                                                             old_percent=old_percent,
                                                              slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
@@ -141,7 +141,7 @@ def get_dataloaders(dataset: str,
         elif protected_attr == 'age':
             data, labels, meta = load_camcan_only_age_split(CAMCAN_DIR,
                                                             sequence='T2',
-                                                            train_age=train_age,
+                                                            old_percent=old_percent,
                                                             slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
