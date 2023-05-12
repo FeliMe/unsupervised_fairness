@@ -258,8 +258,7 @@ def validate(config, model, loader, step, log_imgs=False):
 
             # Update metrics
             group = torch.tensor([i] * len(anomaly_score))
-            scores_and_group = torch.stack([anomaly_score, group], dim=1)
-            metrics.update(scores_and_group, y[k])
+            metrics.update(group, anomaly_score, y[k])
             losses[k].add(loss_dict)
 
             imgs[k].append(x[k])
@@ -319,12 +318,11 @@ def test(config, model, loader, log_dir):
 
             # Update metrics
             group = torch.tensor([i] * len(anomaly_score))
-            scores_and_group = torch.stack([anomaly_score, group], dim=1)
-            metrics.update(scores_and_group, y[k])
+            metrics.update(group, anomaly_score, y[k])
             losses[k].add(loss_dict)
 
     # Compute and flatten metrics and losses
-    metrics_c = metrics.compute(bootstrap=True)
+    metrics_c = metrics.compute(do_bootstrap=True)
     losses_c = {k: v.compute() for k, v in losses.items()}
     losses_c = {f'{k}_{m}': v[m] for k, v in losses_c.items() for m in v.keys()}
 
