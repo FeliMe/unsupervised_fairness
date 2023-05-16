@@ -88,3 +88,27 @@ if __name__ == '__main__':
         metrics=["test/lungOpacity_young_fpr@0.95", "test/lungOpacity_old_fpr@0.95"],
         attr_key='old_percent',
     )
+    """FAE CamCAN"""
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan_age')
+    test_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
+        attr_key='old_percent',
+    )
+    """FAE CamCAN"""
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan-brats_age')
+    test_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_AUROC", "test/old_AUROC"],
+        attr_key='old_percent',
+    )
+    test_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_fpr@0.95", "test/old_fpr@0.95"],
+        attr_key='old_percent',
+    )
+    test_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
+        attr_key='old_percent',
+    )

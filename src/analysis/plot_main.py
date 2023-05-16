@@ -280,42 +280,6 @@ if __name__ == '__main__':
     )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_cDC", "test/lungOpacity_female_cDC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="cDC",
-        title="FAE cDC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_cDC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_aDSC", "test/lungOpacity_female_aDSC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="aDSC",
-        title="FAE aDSC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_aDSC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_meanPrecision", "test/lungOpacity_female_meanPrecision"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="meanPrecision",
-        title="FAE meanPrecision on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_meanPrecision"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_tpr@0.05", "test/lungOpacity_female_tpr@0.05"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05 on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_tpr@0.05"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
         metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
         attr_key='male_percent',
         xlabel="percentage of male subjects in training set",
@@ -332,6 +296,42 @@ if __name__ == '__main__':
         title="FAE anomaly scores on RSNA for different proportions of male patients in training",
         plt_name="fae_rsna_sex_anomaly_score"
     )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_cDC", "test/lungOpacity_female_cDC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="cDC",
+    #     title="FAE cDC on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_cDC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_aDSC", "test/lungOpacity_female_aDSC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="aDSC",
+    #     title="FAE aDSC on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_aDSC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_meanPrecision", "test/lungOpacity_female_meanPrecision"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="meanPrecision",
+    #     title="FAE meanPrecision on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_meanPrecision"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_tpr@0.05", "test/lungOpacity_female_tpr@0.05"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05 on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_tpr@0.05"
+    # )
     # FAE rsna age
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
     plot_metric(
@@ -342,42 +342,6 @@ if __name__ == '__main__':
         ylabel="AUROC",
         title="FAE AUROC on RSNA for different proportions of old patients in training",
         plt_name="fae_rsna_age_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_cDC", "test/lungOpacity_old_cDC"],
-        attr_key='old_percent',
-        xlabel="age of subjects in training set",
-        ylabel="cDC",
-        title="FAE cDC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_cDC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_aDSC", "test/lungOpacity_old_aDSC"],
-        attr_key='old_percent',
-        xlabel="age of subjects in training set",
-        ylabel="aDSC",
-        title="FAE aDSC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_aDSC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_meanPrecision", "test/lungOpacity_old_meanPrecision"],
-        attr_key='old_percent',
-        xlabel="age of subjects in training set",
-        ylabel="meanPrecision",
-        title="FAE meanPrecision on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_meanPrecision"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_tpr@0.05", "test/lungOpacity_old_tpr@0.05"],
-        attr_key='old_percent',
-        xlabel="age of subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_tpr@005fpr"
     )
     plot_metric(
         experiment_dir=experiment_dir,
@@ -396,4 +360,80 @@ if __name__ == '__main__':
         ylabel="anomaly_scores",
         title="FAE anomaly scores on RSNA for different proportions of old patients in training",
         plt_name="fae_rsna_age_anomaly_scores"
+    )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_cDC", "test/lungOpacity_old_cDC"],
+    #     attr_key='old_percent',
+    #     xlabel="age of subjects in training set",
+    #     ylabel="cDC",
+    #     title="FAE cDC on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_cDC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_aDSC", "test/lungOpacity_old_aDSC"],
+    #     attr_key='old_percent',
+    #     xlabel="age of subjects in training set",
+    #     ylabel="aDSC",
+    #     title="FAE aDSC on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_aDSC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_meanPrecision", "test/lungOpacity_old_meanPrecision"],
+    #     attr_key='old_percent',
+    #     xlabel="age of subjects in training set",
+    #     ylabel="meanPrecision",
+    #     title="FAE meanPrecision on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_meanPrecision"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_tpr@0.05", "test/lungOpacity_old_tpr@0.05"],
+    #     attr_key='old_percent',
+    #     xlabel="age of subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_tpr@005fpr"
+    # )
+    """ FAE CamCAN """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan_age')
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
+        attr_key='old_percent',
+        xlabel="age of subjects in training set",
+        ylabel="anomaly scores",
+        title="FAE anomaly scores on CamCAN for different proportions of old patients in training",
+        plt_name="fae_camcan_age_anomaly_scores"
+    )
+    """ FAE CamCAN/BraTS """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan-brats_age')
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_AUROC", "test/old_AUROC"],
+        attr_key='old_percent',
+        xlabel="age of subjects in training set",
+        ylabel="AUROC",
+        title="FAE AUROC on BraTS for different proportions of old patients in training",
+        plt_name="fae_brats_age_AUROC"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_fpr@0.95", "test/old_fpr@0.95"],
+        attr_key='old_percent',
+        xlabel="age of subjects in training set",
+        ylabel="fpr@0.95tpr",
+        title="FAE fpr@0.95tpr on BraTS for different proportions of old patients in training",
+        plt_name="fae_brats_age_fpr@0.95tpr"
+    )
+    plot_metric(
+        experiment_dir=experiment_dir,
+        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
+        attr_key='old_percent',
+        xlabel="age of subjects in training set",
+        ylabel="anomaly scores",
+        title="FAE anomaly scores on BraTS for different proportions of old patients in training",
+        plt_name="fae_brats_age_anomaly_scores"
     )
