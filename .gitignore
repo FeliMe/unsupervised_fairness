@@ -6,5 +6,5 @@ run_*.sh
 *.egg-info
 logs
 src/data/*.csv
-src/plot/**/*.csv
-src/plot/**/*.png
+src/analysis/**/*.csv
+src/analysis/**/*.png
