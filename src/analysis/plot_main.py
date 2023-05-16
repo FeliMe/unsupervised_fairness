@@ -14,6 +14,7 @@ from src.analysis.utils import gather_data_seeds
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+plt.rcParams["font.family"] = "Times New Roman"
 
 
 def plot_metric(
@@ -271,12 +272,12 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_sex')
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_female_AUROC"],
+        metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
         attr_key='male_percent',
         xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_AUROC"
+        ylabel="subgroupAUROC",
+        title="FAE subgroupAUROC on RSNA for different proportions of male patients in training",
+        plt_name="fae_rsna_sex_subgroupAUROC"
     )
     plot_metric(
         experiment_dir=experiment_dir,
@@ -336,12 +337,12 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_AUROC", "test/lungOpacity_old_AUROC"],
+        metrics=["test/lungOpacity_young_subgroupAUROC", "test/lungOpacity_old_subgroupAUROC"],
         attr_key='old_percent',
         xlabel="age of subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_AUROC"
+        ylabel="subgroupAUROC",
+        title="FAE subgroupAUROC on RSNA for different proportions of old patients in training",
+        plt_name="fae_rsna_age_subgroupAUROC"
     )
     plot_metric(
         experiment_dir=experiment_dir,
@@ -412,12 +413,12 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan-brats_age')
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/young_AUROC", "test/old_AUROC"],
+        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
         attr_key='old_percent',
         xlabel="age of subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on BraTS for different proportions of old patients in training",
-        plt_name="fae_brats_age_AUROC"
+        ylabel="subgroupAUROC",
+        title="FAE subgroupAUROC on BraTS for different proportions of old patients in training",
+        plt_name="fae_brats_age_subgroupAUROC"
     )
     plot_metric(
         experiment_dir=experiment_dir,

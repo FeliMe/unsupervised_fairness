@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_auc_score, roc_curve
 from torch import Tensor
 from torchmetrics import Metric, MetricCollection
 from torchmetrics.utilities.data import _flatten_dict
@@ -28,7 +28,8 @@ class MyMetricCollection(MetricCollection):
 
 def build_metrics(subgroup_names: List[str]) -> MyMetricCollection:
     classification_metrics = MyMetricCollection({
-        'AUROC': SubgroupAUROC(subgroup_names),
+        'AUROC': AUROC(subgroup_names),
+        'subgroupAUROC': SubgroupAUROC(subgroup_names),
         'meanPrecision': MeanPrecision(subgroup_names),
         'cDC': cDC(subgroup_names),
         'aDSC': AverageDSC(subgroup_names),
@@ -87,6 +88,67 @@ class AvgAnomalyScore(Metric):
             else:
                 result = self.compute_subgroup(preds, fake_targets, subgroups, subgroup)
             res[f'{subgroup_name}_anomaly_score'] = result
+        return res
+
+
+class AUROC(Metric):
+    """
+    Computes the AUROC naively for each subgroup of the data individually.
+    """
+    is_differentiable: bool = False
+    higher_is_better: bool = True
+
+    def __init__(self, subgroup_names: List[str]):
+        super().__init__()
+        self.subgroup_names = subgroup_names
+        self.add_state("preds", default=[], dist_reduce_fx=None)
+        self.add_state("targets", default=[], dist_reduce_fx=None)
+        self.add_state("subgroups", default=[], dist_reduce_fx=None)
+        self.preds: List
+        self.targets: List
+        self.subgroups: List
+
+    def update(self, subgroups: Tensor, preds: Tensor, targets: Tensor):
+        """
+        subgroups: Tensor of sub-group labels of shape [b]
+        preds: Tensor of anomaly scores of shape [b]
+        targets: Tensor of anomaly labels of shape [b]
+        """
+        assert len(preds) == len(targets) == len(subgroups)
+        self.preds.append(preds)
+        self.targets.append(targets)
+        self.subgroups.append(subgroups)
+
+    @property
+    def num_subgroups(self):
+        return len(self.subgroup_names)
+
+    @staticmethod
+    def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor, subgroup: int):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+
+        # Filter relevant subgroup
+        subgroup_preds = preds[subgroups == subgroup]
+        subgroup_targets = targets[subgroups == subgroup]
+
+        # Compute the area under the ROC curve
+        auroc = roc_auc_score(subgroup_targets, subgroup_preds)
+
+        return auroc
+
+    def compute(self, do_bootstrap: bool = False, **kwargs):
+        preds = torch.cat(self.preds)  # [N]
+        targets = torch.cat(self.targets)  # [N]
+        subgroups = torch.cat(self.subgroups)  # [N]
+        res = {}
+        for subgroup, subgroup_name in enumerate(self.subgroup_names):
+            if do_bootstrap:
+                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
+                                   subgroup=subgroup)
+            else:
+                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            res[f'{subgroup_name}_AUROC'] = result
         return res
 
 
@@ -166,7 +228,7 @@ class SubgroupAUROC(Metric):
                                    subgroup=subgroup)
             else:
                 result = self.compute_subgroup(preds, targets, subgroups, subgroup)
-            res[f'{subgroup_name}_AUROC'] = result
+            res[f'{subgroup_name}_subgroupAUROC'] = result
         return res
 
 

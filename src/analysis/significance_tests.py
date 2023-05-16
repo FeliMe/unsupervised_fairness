@@ -58,7 +58,7 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_sex')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_female_AUROC"],
+        metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
         attr_key='male_percent',
     )
     test_metric(
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_AUROC", "test/lungOpacity_old_AUROC"],
+        metrics=["test/lungOpacity_young_subgroupAUROC", "test/lungOpacity_old_subgroupAUROC"],
         attr_key='old_percent',
     )
     test_metric(
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan-brats_age')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/young_AUROC", "test/old_AUROC"],
+        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
         attr_key='old_percent',
     )
     test_metric(
