@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 from torch import Tensor
 from torchmetrics import Metric, MetricCollection
 from torchmetrics.utilities.data import _flatten_dict
@@ -30,12 +30,15 @@ def build_metrics(subgroup_names: List[str]) -> MyMetricCollection:
     classification_metrics = MyMetricCollection({
         'AUROC': AUROC(subgroup_names),
         'subgroupAUROC': SubgroupAUROC(subgroup_names),
+        'AveragePrecision': AveragePrecision(subgroup_names),
         'meanPrecision': MeanPrecision(subgroup_names),
         'cDC': cDC(subgroup_names),
         'aDSC': AverageDSC(subgroup_names),
         'tpr@5fpr': TPR_at_FPR(subgroup_names, xfpr=0.05),
         'fpr@95tpr': FPR_at_TPR(subgroup_names, xtpr=0.95),
         'avg_anomaly_score': AvgAnomalyScore(subgroup_names),
+        'DSC@EER': DSC_at_EER(subgroup_names),
+        'upperDSC': UpperDSC(subgroup_names),
     })
     return classification_metrics
 
@@ -135,7 +138,7 @@ class AUROC(Metric):
         # Compute the area under the ROC curve
         auroc = roc_auc_score(subgroup_targets, subgroup_preds)
 
-        return auroc
+        return torch.tensor(auroc)
 
     def compute(self, do_bootstrap: bool = False, **kwargs):
         preds = torch.cat(self.preds)  # [N]
@@ -229,6 +232,67 @@ class SubgroupAUROC(Metric):
             else:
                 result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_subgroupAUROC'] = result
+        return res
+
+
+class AveragePrecision(Metric):
+    """
+    Computes the Average Precision (AP) naively for each subgroup of the data individually.
+    """
+    is_differentiable: bool = False
+    higher_is_better: bool = True
+
+    def __init__(self, subgroup_names: List[str]):
+        super().__init__()
+        self.subgroup_names = subgroup_names
+        self.add_state("preds", default=[], dist_reduce_fx=None)
+        self.add_state("targets", default=[], dist_reduce_fx=None)
+        self.add_state("subgroups", default=[], dist_reduce_fx=None)
+        self.preds: List
+        self.targets: List
+        self.subgroups: List
+
+    def update(self, subgroups: Tensor, preds: Tensor, targets: Tensor):
+        """
+        subgroups: Tensor of sub-group labels of shape [b]
+        preds: Tensor of anomaly scores of shape [b]
+        targets: Tensor of anomaly labels of shape [b]
+        """
+        assert len(preds) == len(targets) == len(subgroups)
+        self.preds.append(preds)
+        self.targets.append(targets)
+        self.subgroups.append(subgroups)
+
+    @property
+    def num_subgroups(self):
+        return len(self.subgroup_names)
+
+    @staticmethod
+    def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor, subgroup: int):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+
+        # Filter relevant subgroup
+        subgroup_preds = preds[subgroups == subgroup]
+        subgroup_targets = targets[subgroups == subgroup]
+
+        # Compute the Average Precision
+        ap = average_precision_score(subgroup_targets, subgroup_preds)
+
+        return torch.tensor(ap)
+
+    def compute(self, do_bootstrap: bool = False, **kwargs):
+        preds = torch.cat(self.preds)  # [N]
+        targets = torch.cat(self.targets)  # [N]
+        subgroups = torch.cat(self.subgroups)  # [N]
+        res = {}
+        for subgroup, subgroup_name in enumerate(self.subgroup_names):
+            if do_bootstrap:
+                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
+                                   subgroup=subgroup)
+            else:
+                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            res[f'{subgroup_name}_AP'] = result
         return res
 
 
@@ -398,11 +462,6 @@ class FPR_at_TPR(Metric):
         return len(self.subgroup_names)
 
     @staticmethod
-    def compute_fpr(preds_bin: Tensor, targets: Tensor):
-        fpr = (preds_bin * (1 - targets)).sum() / ((1 - targets).sum() + 1e-8)
-        return fpr
-
-    @staticmethod
     def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor,
                          subgroup: int, xtpr: float):
         if targets.sum() == 0 or targets.sum() == len(targets):
@@ -410,7 +469,7 @@ class FPR_at_TPR(Metric):
         # Compute TPR threshold for total dataset
         _, tpr, thresholds = roc_curve(targets, preds, pos_label=1)
         threshold = thresholds[np.argwhere(tpr > xtpr)[0, 0]]
-        # Compute TPR for subgroup
+        # Compute FPR for subgroup
         targets = targets[subgroups == subgroup]  # [N_s]
         preds = preds[subgroups == subgroup]  # [N_s]
         preds_bin = (preds > threshold).long()  # [N_s]
@@ -562,6 +621,144 @@ class AverageDSC(Metric):
         return res
 
 
+class UpperDSC(Metric):
+    """
+    Computes the Dice similarity coefficient for subgroups of the data
+    at the point where the DSC is maximal for the whole dataset.
+    """
+    is_differentiable: bool = False
+    higher_is_better: bool = True
+
+    def __init__(self, subgroup_names: List[str]):
+        super().__init__()
+        self.subgroup_names = subgroup_names
+        self.add_state("preds", default=[], dist_reduce_fx=None)
+        self.add_state("targets", default=[], dist_reduce_fx=None)
+        self.add_state("subgroups", default=[], dist_reduce_fx=None)
+        self.preds: List
+        self.targets: List
+        self.subgroups: List
+
+    def update(self, subgroups: Tensor, preds: Tensor, targets: Tensor):
+        """
+        subgroups: Tensor of sub-group labels of shape [b]
+        preds: Tensor of anomaly scores of shape [b]
+        targets: Tensor of anomaly labels of shape [b] (dummy)
+        """
+        assert len(preds) == len(targets) == len(subgroups)
+        self.preds.append(preds)
+        self.targets.append(targets)
+        self.subgroups.append(subgroups)
+
+    @property
+    def num_subgroups(self):
+        return len(self.subgroup_names)
+
+    @staticmethod
+    def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor, subgroup: int):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute min and max score and thresholds for whole dataset
+        min_score = preds.min()
+        max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
+        thresholds = torch.linspace(min_score, max_score, 1001)
+        # Compute maximum DSC for whole dataset
+        preds_bin = (preds[:, None] > thresholds).long()  # [N, n_thresholds]
+        tp = (preds_bin * targets[:, None]).sum(0)  # [n_thredholds]
+        p = preds_bin.sum(0)  # [n_thresholds]
+        t = targets.sum()
+        DSCs = (2 * tp) / (p + t + 1e-8)  # [n_thresholds]
+        # Compute DSC for subgroup at maximum DSC
+        max_threshold = thresholds[DSCs.argmax()]
+        preds_sub = preds[subgroups == subgroup]  # [N]
+        targets_sub = targets[subgroups == subgroup]  # [N]
+        preds_bin_sub = (preds_sub > max_threshold).long()  # [N]
+        tp_sub = (preds_bin_sub * targets_sub).sum()
+        p_sub = preds_bin_sub.sum()
+        t_sub = targets_sub.sum()
+        DSC_sub = (2 * tp_sub) / (p_sub + t_sub + 1e-8)
+        return DSC_sub
+
+    def compute(self, do_bootstrap: bool = False, **kwargs):
+        preds = torch.cat(self.preds)  # [N]
+        targets = torch.cat(self.targets)  # [N]
+        subgroups = torch.cat(self.subgroups)  # [N]
+        res = {}
+        for subgroup, subgroup_name in enumerate(self.subgroup_names):
+            if do_bootstrap:
+                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
+                                   subgroup=subgroup)
+            else:
+                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            res[f'{subgroup_name}_upperDSC'] = result
+        return res
+
+
+class DSC_at_EER(Metric):
+    """DSC-score at equal error rate (where FPR and FNR are the same)."""
+    is_differentiable: bool = False
+    higher_is_better: bool = True
+
+    def __init__(self, subgroup_names: List[str]):
+        super().__init__()
+        self.subgroup_names = subgroup_names
+        self.add_state("preds", default=[], dist_reduce_fx=None)
+        self.add_state("targets", default=[], dist_reduce_fx=None)
+        self.add_state("subgroups", default=[], dist_reduce_fx=None)
+        self.preds: List
+        self.targets: List
+        self.subgroups: List
+
+    @property
+    def num_subgroups(self):
+        return len(self.subgroup_names)
+
+    def update(self, subgroups: Tensor, preds: Tensor, targets: Tensor):
+        """
+        subgroups: Tensor of sub-group labels of shape [b]
+        preds: Tensor of anomaly scores of shape [b]
+        targets: Tensor of anomaly labels of shape [b] (dummy)
+        """
+        assert len(preds) == len(targets) == len(subgroups)
+        self.preds.append(preds)
+        self.targets.append(targets)
+        self.subgroups.append(subgroups)
+
+    @staticmethod
+    def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor,
+                         subgroup: int):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute EER for total dataset
+        fpr, tpr, thresholds = roc_curve(targets, preds, pos_label=1)
+        fnr = 1 - tpr
+        threshold_idx = np.argmin(np.abs(fpr - fnr))
+        threshold = thresholds[threshold_idx]
+        # Compute F1 for subgroup
+        targets = targets[subgroups == subgroup]  # [N_s]
+        preds = preds[subgroups == subgroup]  # [N_s]
+        preds_bin = (preds > threshold).long()  # [N_s]
+        tp = (preds_bin * targets).sum()
+        fp = (preds_bin * (1 - targets)).sum()
+        fn = ((1 - preds_bin) * targets).sum()
+        dsc = 2 * tp / (2 * tp + (fp + fn) + 1e-8)
+        return dsc
+
+    def compute(self, do_bootstrap: bool = False, **kwargs):
+        preds = torch.cat(self.preds)  # [N]
+        targets = torch.cat(self.targets)  # [N]
+        subgroups = torch.cat(self.subgroups)  # [N]
+        res = {}
+        for subgroup, subgroup_name in enumerate(self.subgroup_names):
+            if do_bootstrap:
+                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
+                                   subgroup=subgroup)
+            else:
+                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            res[f'{subgroup_name}_DSC@EER'] = result
+        return res
+
+
 class AvgMeter:
     def __init__(self):
         self.reset()
@@ -631,12 +828,16 @@ if __name__ == '__main__':
     subgroup_names = ['subgroup1', 'subgroup2']
     metrics = MyMetricCollection({
         'avg_anomaly_score': AvgAnomalyScore(subgroup_names),
-        'AUROC': SubgroupAUROC(subgroup_names),
+        'AUROC': AUROC(subgroup_names),
+        'subgroupAUROC': SubgroupAUROC(subgroup_names),
+        'AveragePrecision': AveragePrecision(subgroup_names),
         'meanPrecision': MeanPrecision(subgroup_names),
+        'DSC@EER': DSC_at_EER(subgroup_names),
         'tpr@5fpr': TPR_at_FPR(subgroup_names, xfpr=0.05),
         'fpr@5tpr': FPR_at_TPR(subgroup_names, xtpr=0.95),
         'cDC': cDC(subgroup_names),
         'aDSC': AverageDSC(subgroup_names),
+        'upperDSC': UpperDSC(subgroup_names),
     })
 
     scores = torch.tensor([0.8, 0.6, 0.2, 0.9, 0.5, 0.7, 0.3])
