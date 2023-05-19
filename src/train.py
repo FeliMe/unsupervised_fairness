@@ -193,7 +193,15 @@ def train(train_loader, val_loader, config, log_dir):
                 # Print training loss
                 log_msg = " - ".join([f'{k}: {v:.4f}' for k, v in train_results.items()])
                 log_msg = f"Iteration {step} - " + log_msg
-                log_msg += f" - time: {time() - t_start:.2f}s"
+                # Elapsed time
+                elapsed_time = datetime.utcfromtimestamp(time() - t_start)
+                log_msg += f" - time: {elapsed_time.strftime('%H:%M:%S')}s"
+                # Estimate remaining time
+                time_per_step = (time() - t_start) / step
+                remaining_steps = config.max_steps - step
+                remaining_time = remaining_steps * time_per_step
+                remaining_time = datetime.utcfromtimestamp(remaining_time)
+                log_msg += f" - remaining time: {remaining_time.strftime('%H:%M:%S')}"
                 print(log_msg)
 
                 # Log to w&b or tensorboard

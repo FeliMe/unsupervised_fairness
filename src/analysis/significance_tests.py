@@ -63,14 +63,24 @@ if __name__ == '__main__':
     )
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
+        metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
         attr_key='male_percent',
     )
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
+        metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
         attr_key='male_percent',
     )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_DSC@EER", "test/lungOpacity_female_DSC@EER"],
+    #     attr_key='male_percent',
+    # )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_upperDSC", "test/lungOpacity_female_upperDSC"],
+    #     attr_key='male_percent',
+    # )
     # FAE rsna age
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
     test_metric(
@@ -80,14 +90,24 @@ if __name__ == '__main__':
     )
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_anomaly_score", "test/lungOpacity_old_anomaly_score"],
+        metrics=["test/lungOpacity_young_fpr@0.95", "test/lungOpacity_old_fpr@0.95"],
         attr_key='old_percent',
     )
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_fpr@0.95", "test/lungOpacity_old_fpr@0.95"],
+        metrics=["test/lungOpacity_young_anomaly_score", "test/lungOpacity_old_anomaly_score"],
         attr_key='old_percent',
     )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_DSC@EER", "test/lungOpacity_old_DSC@EER"],
+    #     attr_key='old_percent',
+    # )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_young_upperDSC", "test/lungOpacity_old_upperDSC"],
+    #     attr_key='old_percent',
+    # )
     """FAE CamCAN"""
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan_age')
     test_metric(
@@ -112,3 +132,13 @@ if __name__ == '__main__':
         metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
         attr_key='old_percent',
     )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/young_DSC@EER", "test/old_DSC@EER"],
+    #     attr_key='old_percent',
+    # )
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/young_upperDSC", "test/old_upperDSC"],
+    #     attr_key='old_percent',
+    # )
