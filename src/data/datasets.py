@@ -1,8 +1,6 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import numpy as np
-import torch
 from torch import Tensor, Generator
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
@@ -10,7 +8,8 @@ from torchvision import transforms
 from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
 from src.data.camcan_brats import (load_camcan_brats_age_split,
                                    load_camcan_only_age_split)
-from src.data.data_utils import load_dicom_img
+from src.data.data_utils import load_dicom_img, load_png_img_grayscale
+from src.data.mimic_cxr import load_mimic_cxr_naive_split
 from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
                                                load_rsna_gender_split,
                                                load_rsna_naive_split)
@@ -34,21 +33,20 @@ class NormalDataset(Dataset):
         :param gender:
         """
         self.data = data
-        for i, d in enumerate(self.data):
-            if isinstance(d, str):
-                self.data[i] = load_fn(d)
+        # for i, d in enumerate(self.data):
+        #     if isinstance(d, str):
+        #         self.data[i] = transform(load_fn(d))
         self.labels = labels
         self.meta = meta
-        self.transform = transform
         self.load_fn = load_fn
+        self.transform = transform
 
     def __len__(self) -> int:
         return len(self.data)
 
     def __getitem__(self, idx: int) -> Tensor:
-        img = self.data[idx]
-        # img = self.load_fn(self.data[idx])
-        img = self.transform(img)
+        img = self.transform(self.load_fn(self.data[idx]))
+        # img = self.data[idx]
         label = self.labels[idx]
         meta = self.meta[idx]
         return img, label, meta
@@ -78,7 +76,7 @@ class AnomalFairnessDataset(Dataset):
         self.load_fn = load_fn
 
     def __len__(self) -> int:
-        return len(self.data[list(self.data.keys())[0]])
+        return min([len(v) for v in self.data.values()])
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, int]:
         img = {k: self.transform(self.load_fn(v[idx])) for k, v in self.data.items()}
@@ -147,6 +145,12 @@ def get_dataloaders(dataset: str,
                                                             slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
+    elif dataset == 'mimic-cxr':
+        load_fn = load_png_img_grayscale
+        if protected_attr == 'none':
+            data, labels, meta = load_mimic_cxr_naive_split()
+        else:
+            raise NotImplementedError
     else:
         raise ValueError(f'Unknown dataset: {dataset}')
 

@@ -29,8 +29,8 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats'])
-parser.add_argument('--protected_attr', type=str, default='sex',
+parser.add_argument('--dataset', type=str, default='mimic-cxr', choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr'])
+parser.add_argument('--protected_attr', type=str, default='none',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)

@@ -1,7 +1,9 @@
 import pydicom as dicom
 import torch
 
+from PIL import Image
 from torch import Tensor
+from torchvision import transforms
 
 
 def load_dicom_img(filename: str) -> Tensor:
@@ -9,6 +11,13 @@ def load_dicom_img(filename: str) -> Tensor:
     ds = dicom.dcmread(filename)
     img = torch.tensor(ds.pixel_array, dtype=torch.float32) / 255.0
     return img[None]  # (1, H, W)
+
+
+def load_png_img_grayscale(filename: str) -> Tensor:
+    """Loads a PNG image."""
+    img = Image.open(filename).convert('L')
+    img = transforms.ToTensor()(img)
+    return img
 
 
 if __name__ == '__main__':
