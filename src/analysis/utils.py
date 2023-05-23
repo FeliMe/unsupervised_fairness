@@ -24,34 +24,10 @@ experiment_dir
 Each results.csv file contains the results of a single run of the experiment.
 """
 import os
-import warnings
 from typing import List
 
 import numpy as np
 import pandas as pd
-
-
-def gather_data_bootstrap(experiment_dir: str):
-    """Gather the data of the first random seed of each run and bootstrap the results"""
-    run_dirs = [os.path.join(experiment_dir, run_dir) for run_dir in os.listdir(experiment_dir)]
-    dfs = []
-    for run_dir in run_dirs:
-        run_dir = get_lowest_seed(run_dir)
-        results_file = os.path.join(run_dir, 'test_results.csv')
-        if not os.path.exists(results_file):
-            warnings.warn(f"Results file {results_file} does not exist")
-            continue
-        df = pd.read_csv(results_file)
-        # Average all columns that have multiple non NaN values
-        for col in df.columns:
-            if df[col].count() > 1:
-                df[f'{col}_lower'] = df[col].quantile(0.025)
-                df[f'{col}_upper'] = df[col].quantile(0.975)
-                df[col] = df[col].mean()
-        df = df.iloc[:1]
-        df['run_dir'] = run_dir
-        dfs.append(df)
-    return pd.concat(dfs)
 
 
 def gather_data_seeds(experiment_dir: str, attr_key: str, metric_names: List[str]):
@@ -67,8 +43,6 @@ def gather_data_seeds(experiment_dir: str, attr_key: str, metric_names: List[str
         for seed_dir in seed_dirs:
             results_file = os.path.join(seed_dir, 'test_results.csv')
             df = pd.read_csv(results_file)
-            # Average all columns that have multiple non NaN values
-            df = avg_numeric_in_df(df)
             seed_dfs.append(df)
         df = pd.concat(seed_dfs)
         run_dfs.append(df)

@@ -341,18 +341,11 @@ def test(config, model, loader, log_dir):
     labels = torch.cat(labels)
 
     # Compute and flatten metrics and losses
-    metrics_c = metrics.compute(do_bootstrap=True)
+    metrics_c = metrics.compute()
     losses_c = {k: v.compute() for k, v in losses.items()}
     losses_c = {f'{k}_{m}': v[m] for k, v in losses_c.items() for m in v.keys()}
 
-    # Compute mean and std over bootstrap runs
-    metrics_c_agg = {}
-    for k, v in metrics_c.items():
-        metrics_c_agg[k] = v.mean()
-        metrics_c_agg[f'{k}_lower'] = torch.quantile(v, 0.025)
-        metrics_c_agg[f'{k}_upper'] = torch.quantile(v, 0.975)
-
-    results = {**metrics_c_agg, **losses_c}
+    results = {**metrics_c, **losses_c}
 
     # Print validation results
     print("\nTest results:")

@@ -2,7 +2,7 @@
 Bootstrapping method from https://sebastianraschka.com/blog/2022/confidence-intervals-for-ml.html
 """
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -73,24 +73,30 @@ class AvgAnomalyScore(Metric):
         return len(self.subgroup_names)
 
     @staticmethod
-    def compute_subgroup(preds: Tensor, targets: Tensor, subgroups: Tensor, subgroup: int):
+    def compute_subgroup(preds: Tensor, subgroups: Tensor, subgroup: int):
         anomaly_score = preds[subgroups == subgroup].mean()
         if anomaly_score.isnan():
             anomaly_score = torch.tensor(0.)
         return anomaly_score
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor):
+        anomaly_score = preds.mean()
+        if anomaly_score.isnan():
+            anomaly_score = torch.tensor(0.)
+        return anomaly_score
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
-        fake_targets = torch.zeros_like(preds)
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, fake_targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, fake_targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, subgroups, subgroup)
             res[f'{subgroup_name}_anomaly_score'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds)
+        res['anomaly_score'] = result
         return res
 
 
@@ -140,18 +146,25 @@ class AUROC(Metric):
 
         return torch.tensor(auroc)
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        auroc = roc_auc_score(targets, preds)
+        return torch.tensor(auroc)
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_AUROC'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['AUROC'] = result
         return res
 
 
@@ -220,17 +233,13 @@ class SubgroupAUROC(Metric):
 
         return auroc
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_subgroupAUROC'] = result
         return res
 
@@ -281,18 +290,25 @@ class AveragePrecision(Metric):
 
         return torch.tensor(ap)
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        ap = average_precision_score(targets, preds)
+        return torch.tensor(ap)
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_AP'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['AP'] = result
         return res
 
 
@@ -338,27 +354,44 @@ class MeanPrecision(Metric):
         min_score = preds.min()
         max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
         thresholds = torch.linspace(min_score, max_score, 1001)
-        # Compute average precision for subgroup
-        targets = targets[subgroups == subgroup, None]  # [N, 1]
-        preds = preds[subgroups == subgroup, None]  # [N, 1]
+        # Compute mean precision for subgroup
+        subgroup_targets = targets[subgroups == subgroup, None]  # [N, 1]
+        subgroup_preds = preds[subgroups == subgroup, None]  # [N, 1]
+        subgroup_preds_bin = (subgroup_preds > thresholds).long()  # [N, n_thresholds]
+        tp = (subgroup_preds_bin * subgroup_targets).sum(0)  # [n_thresholds]
+        fp = (subgroup_preds_bin * (1 - subgroup_targets)).sum(0)  # [n_thresholds]
+        precisions = tp / (tp + fp + 1e-8)  # [n_thresholds]
+        return precisions.mean()
+
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute min and max score and thresholds
+        min_score = preds.min()
+        max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
+        thresholds = torch.linspace(min_score, max_score, 1001)
+        # Compute mean precision
+        targets = targets.clone()[:, None]  # [N, 1]
+        preds = preds.clone()[:, None]  # [N, 1]
         preds_bin = (preds > thresholds).long()  # [N, n_thresholds]
         tp = (preds_bin * targets).sum(0)  # [n_thresholds]
         fp = (preds_bin * (1 - targets)).sum(0)  # [n_thresholds]
         precisions = tp / (tp + fp + 1e-8)  # [n_thresholds]
         return precisions.mean()
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_meanPrecision'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['meanPrecision'] = result
         return res
 
 
@@ -408,24 +441,37 @@ class TPR_at_FPR(Metric):
             threshold_idx = threshold_idx[-1, 0]
         threshold = thresholds[threshold_idx]
         # Compute TPR for subgroup
-        targets = targets[subgroups == subgroup]  # [N_s]
-        preds = preds[subgroups == subgroup]  # [N_s]
-        preds_bin = (preds > threshold).long()  # [N_s]
-        tpr = (preds_bin * targets).sum() / (targets.sum() + 1e-8)
+        subgroup_targets = targets[subgroups == subgroup]  # [N_s]
+        subgroup_preds = preds[subgroups == subgroup]  # [N_s]
+        subgroup_preds_bin = (subgroup_preds > threshold).long()  # [N_s]
+        tpr = (subgroup_preds_bin * subgroup_targets).sum() / (subgroup_targets.sum() + 1e-8)
         return tpr
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor, xfpr: float):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute FPR threshold for total dataset
+        fpr, tpr, _ = roc_curve(targets, preds, pos_label=1)
+        tpr_idx = np.argwhere(fpr < xfpr)
+        if len(tpr_idx) == 0:
+            tpr_idx = -1
+        else:
+            tpr_idx = tpr_idx[-1, 0]
+        return tpr[tpr_idx]
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup, xfpr=self.xfpr)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup, self.xfpr)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup, self.xfpr)
             res[f'{subgroup_name}_tpr@{self.xfpr}'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets, self.xfpr)
+        res[f'tpr@{self.xfpr}'] = result
         return res
 
 
@@ -470,24 +516,32 @@ class FPR_at_TPR(Metric):
         _, tpr, thresholds = roc_curve(targets, preds, pos_label=1)
         threshold = thresholds[np.argwhere(tpr > xtpr)[0, 0]]
         # Compute FPR for subgroup
-        targets = targets[subgroups == subgroup]  # [N_s]
-        preds = preds[subgroups == subgroup]  # [N_s]
-        preds_bin = (preds > threshold).long()  # [N_s]
-        fpr = (preds_bin * (1 - targets)).sum() / ((1 - targets).sum() + 1e-8)
+        subgroup_targets = targets[subgroups == subgroup]  # [N_s]
+        subgroup_preds = preds[subgroups == subgroup]  # [N_s]
+        subgroup_preds_bin = (subgroup_preds > threshold).long()  # [N_s]
+        fpr = (subgroup_preds_bin * (1 - subgroup_targets)).sum() / ((1 - subgroup_targets).sum() + 1e-8)
         return fpr
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor, xtpr: float):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(1.)
+        fpr, tpr, _ = roc_curve(targets, preds, pos_label=1)
+        fpr_idx = np.argwhere(tpr > xtpr)[0, 0]
+        return fpr[fpr_idx]
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup, xtpr=self.xtpr)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup, self.xtpr)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup, self.xtpr)
             res[f'{subgroup_name}_fpr@{self.xtpr}'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets, self.xtpr)
+        res[f'fpr@{self.xtpr}'] = result
         return res
 
 
@@ -528,30 +582,47 @@ class cDC(Metric):
         # Normalize preds for full dataset
         min_score = preds.min()
         max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
-        preds = (preds - min_score) / (max_score - min_score)
+        preds_norm = (preds - min_score) / (max_score - min_score)
         # Filter relevant subgroup
-        targets = targets[subgroups == subgroup]  # [N_s]
-        preds = preds[subgroups == subgroup]  # [N_s]
+        subgroup_targets = targets[subgroups == subgroup]  # [N_s]
+        subgroup_preds = preds_norm[subgroups == subgroup]  # [N_s]
         # Compute cDC
-        anb = (targets * preds).sum()  # Eq. 2
-        a = targets.sum()  # Eq. 3
-        b = preds.sum()  # Eq. 4
-        c = (targets * preds).sum() / (targets[preds > 0].sum() + 1e-7)  # Eq. 6
+        anb = (subgroup_targets * subgroup_preds).sum()  # Eq. 2
+        a = subgroup_targets.sum()  # Eq. 3
+        b = subgroup_preds.sum()  # Eq. 4
+        c = (subgroup_targets * subgroup_preds).sum() / (subgroup_targets[subgroup_preds > 0].sum() + 1e-7)  # Eq. 6
         cDC = anb / (c * a + b + 1e-7)  # Eq. 5
         return cDC
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Normalize preds
+        min_score = preds.min()
+        max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
+        preds_norm = (preds - min_score) / (max_score - min_score)
+        targets = targets.clone()
+        # Compute cDC
+        anb = (targets * preds_norm).sum()  # Eq. 2
+        a = targets.sum()  # Eq. 3
+        b = preds_norm.sum()  # Eq. 4
+        c = (targets * preds_norm).sum() / (targets[preds_norm > 0].sum() + 1e-7)  # Eq. 6
+        cDC = anb / (c * a + b + 1e-7)  # Eq. 5
+        return cDC
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_cDC'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['cDC'] = result
         return res
 
 
@@ -597,8 +668,26 @@ class AverageDSC(Metric):
         max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
         thresholds = torch.linspace(min_score, max_score, 1001)
         # Compute average DSC for subgroup
-        targets = targets[subgroups == subgroup, None]  # [N, 1]
-        preds = preds[subgroups == subgroup, None]  # [N, 1]
+        subgroup_targets = targets[subgroups == subgroup, None]  # [N, 1]
+        subgroup_preds = preds[subgroups == subgroup, None]  # [N, 1]
+        subgroup_preds_bin = (subgroup_preds > thresholds).long()  # [N, n_thresholds]
+        tp = (subgroup_preds_bin * subgroup_targets).sum(0)  # [n_thredholds]
+        p = subgroup_preds_bin.sum(0)  # [n_thresholds]
+        t = subgroup_targets.sum()
+        DSCs = (2 * tp) / (p + t + 1e-8)  # [n_thresholds]
+        return DSCs.mean()
+
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute min and max score and thresholds
+        min_score = preds.min()
+        max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
+        thresholds = torch.linspace(min_score, max_score, 1001)
+        # Compute average DSC
+        targets = targets.clone()[:, None]  # [N, 1]
+        preds = preds.clone()[:, None]  # [N, 1]
         preds_bin = (preds > thresholds).long()  # [N, n_thresholds]
         tp = (preds_bin * targets).sum(0)  # [n_thredholds]
         p = preds_bin.sum(0)  # [n_thresholds]
@@ -606,18 +695,18 @@ class AverageDSC(Metric):
         DSCs = (2 * tp) / (p + t + 1e-8)  # [n_thresholds]
         return DSCs.mean()
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_aDSC'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['aDSC'] = result
         return res
 
 
@@ -670,27 +759,52 @@ class UpperDSC(Metric):
         DSCs = (2 * tp) / (p + t + 1e-8)  # [n_thresholds]
         # Compute DSC for subgroup at maximum DSC
         max_threshold = thresholds[DSCs.argmax()]
-        preds_sub = preds[subgroups == subgroup]  # [N]
-        targets_sub = targets[subgroups == subgroup]  # [N]
-        preds_bin_sub = (preds_sub > max_threshold).long()  # [N]
-        tp_sub = (preds_bin_sub * targets_sub).sum()
-        p_sub = preds_bin_sub.sum()
-        t_sub = targets_sub.sum()
+        subgroup_preds = preds[subgroups == subgroup]  # [N]
+        subgroup_targets = targets[subgroups == subgroup]  # [N]
+        subgroup_preds_bin = (subgroup_preds > max_threshold).long()  # [N]
+        tp_sub = (subgroup_preds_bin * subgroup_targets).sum()
+        p_sub = subgroup_preds_bin.sum()
+        t_sub = subgroup_targets.sum()
         DSC_sub = (2 * tp_sub) / (p_sub + t_sub + 1e-8)
         return DSC_sub
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute min and max score and thresholds
+        min_score = preds.min()
+        max_score = preds.quantile(0.99, interpolation='lower')  # Ignore outliers
+        thresholds = torch.linspace(min_score, max_score, 1001)
+        # Compute maximum DSC
+        preds_bin = (preds[:, None] > thresholds).long()  # [N, n_thresholds]
+        tp = (preds_bin * targets[:, None]).sum(0)  # [n_thredholds]
+        p = preds_bin.sum(0)  # [n_thresholds]
+        t = targets.sum()
+        DSCs = (2 * tp) / (p + t + 1e-8)  # [n_thresholds]
+        # Compute DSC for subgroup at maximum DSC
+        max_threshold = thresholds[DSCs.argmax()]
+        preds_ = preds.clone()
+        targets_ = targets.clone()
+        preds_bin = (preds_ > max_threshold).long()  # [N]
+        tp_sub = (preds_bin * targets_).sum()
+        p_sub = preds_bin.sum()
+        t_sub = targets_.sum()
+        DSC_sub = (2 * tp_sub) / (p_sub + t_sub + 1e-8)
+        return DSC_sub
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_upperDSC'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['upperDSC'] = result
         return res
 
 
@@ -735,27 +849,46 @@ class DSC_at_EER(Metric):
         threshold_idx = np.argmin(np.abs(fpr - fnr))
         threshold = thresholds[threshold_idx]
         # Compute F1 for subgroup
-        targets = targets[subgroups == subgroup]  # [N_s]
-        preds = preds[subgroups == subgroup]  # [N_s]
-        preds_bin = (preds > threshold).long()  # [N_s]
-        tp = (preds_bin * targets).sum()
-        fp = (preds_bin * (1 - targets)).sum()
-        fn = ((1 - preds_bin) * targets).sum()
+        subgroup_targets = targets[subgroups == subgroup]  # [N_s]
+        subgroup_preds = preds[subgroups == subgroup]  # [N_s]
+        subgroup_preds_bin = (subgroup_preds > threshold).long()  # [N_s]
+        tp = (subgroup_preds_bin * subgroup_targets).sum()
+        fp = (subgroup_preds_bin * (1 - subgroup_targets)).sum()
+        fn = ((1 - subgroup_preds_bin) * subgroup_targets).sum()
         dsc = 2 * tp / (2 * tp + (fp + fn) + 1e-8)
         return dsc
 
-    def compute(self, do_bootstrap: bool = False, **kwargs):
+    @staticmethod
+    def compute_overall(preds: Tensor, targets: Tensor):
+        if targets.sum() == 0 or targets.sum() == len(targets):
+            return torch.tensor(0.)
+        # Compute EER for total dataset
+        fpr, tpr, thresholds = roc_curve(targets, preds, pos_label=1)
+        fnr = 1 - tpr
+        threshold_idx = np.argmin(np.abs(fpr - fnr))
+        threshold = thresholds[threshold_idx]
+        # Compute F1 for subgroup
+        targets_ = targets.clone()  # [N_s]
+        preds_ = preds.clone()  # [N_s]
+        preds_bin = (preds_ > threshold).long()  # [N_s]
+        tp = (preds_bin * targets_).sum()
+        fp = (preds_bin * (1 - targets_)).sum()
+        fn = ((1 - preds_bin) * targets_).sum()
+        dsc = 2 * tp / (2 * tp + (fp + fn) + 1e-8)
+        return dsc
+
+    def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
         targets = torch.cat(self.targets)  # [N]
         subgroups = torch.cat(self.subgroups)  # [N]
         res = {}
+        # Compute score for each subgroup
         for subgroup, subgroup_name in enumerate(self.subgroup_names):
-            if do_bootstrap:
-                result = bootstrap(preds, targets, subgroups, self.compute_subgroup,
-                                   subgroup=subgroup)
-            else:
-                result = self.compute_subgroup(preds, targets, subgroups, subgroup)
+            result = self.compute_subgroup(preds, targets, subgroups, subgroup)
             res[f'{subgroup_name}_DSC@EER'] = result
+        # Compute score for whole dataset
+        result = self.compute_overall(preds, targets)
+        res['DSC@EER'] = result
         return res
 
 
@@ -796,34 +929,6 @@ class AvgDictMeter:
         return {key: value / self.n for key, value in self.values.items()}
 
 
-def bootstrap(preds: Tensor,
-              targets: Tensor,
-              subgroups: Tensor,
-              metric_fn: Callable,
-              n_bootstrap: int = 250,
-              **kwargs):
-    """Computes the confidence interval of a metric using bootstrapping
-    of the predictions.
-
-    :param preds: Tensor of predicted values of shape [b]
-    :param targets: Tensor of target values of shape [b]
-    :param subgroups: Tensor of subgroup labels of shape [b]
-    :param metric_fn: Metric function that takes preds and targets as input
-    :param n_bootstrap: Number of bootstrap iterations
-    """
-    b = len(preds)
-    rng = torch.Generator().manual_seed(2147483647)
-    idx = torch.arange(b)
-
-    metrics = []
-    for _ in range(n_bootstrap):
-        pred_idx = idx[torch.randint(b, size=(b,), generator=rng)]  # Sample with replacement
-        metric_boot = metric_fn(preds[pred_idx], targets[pred_idx], subgroups[pred_idx], **kwargs)
-        metrics.append(metric_boot)
-
-    return torch.stack(metrics)
-
-
 if __name__ == '__main__':
     subgroup_names = ['subgroup1', 'subgroup2']
     metrics = MyMetricCollection({
@@ -844,4 +949,4 @@ if __name__ == '__main__':
     labels = torch.tensor([1, 0, 0, 1, 1, 0, 1])
     subgroups = torch.tensor([0, 1, 0, 0, 1, 1, 0])
     metrics.update(subgroups, scores, labels)
-    print(metrics.compute(do_bootstrap=False))
+    print(metrics.compute())
