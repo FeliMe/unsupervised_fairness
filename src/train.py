@@ -29,8 +29,8 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='mimic-cxr', choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr'])
-parser.add_argument('--protected_attr', type=str, default='none',
+parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr'])
+parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)
@@ -349,7 +349,7 @@ def test(config, model, loader, log_dir):
 
     # Print validation results
     print("\nTest results:")
-    log_msg = "\n".join([f'{k}: {v.mean():.4f}' for k, v in results.items()])
+    log_msg = "\n".join([f'{k}: {v:.4f}' for k, v in results.items()])
     log_msg += "\n"
     print(log_msg)
 

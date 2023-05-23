@@ -33,9 +33,9 @@ class NormalDataset(Dataset):
         :param gender:
         """
         self.data = data
-        # for i, d in enumerate(self.data):
-        #     if isinstance(d, str):
-        #         self.data[i] = transform(load_fn(d))
+        for i, d in enumerate(self.data):
+            if isinstance(d, str):
+                self.data[i] = transform(load_fn(d))
         self.labels = labels
         self.meta = meta
         self.load_fn = load_fn
@@ -45,8 +45,8 @@ class NormalDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx: int) -> Tensor:
-        img = self.transform(self.load_fn(self.data[idx]))
-        # img = self.data[idx]
+        # img = self.transform(self.load_fn(self.data[idx]))
+        img = self.data[idx]
         label = self.labels[idx]
         meta = self.meta[idx]
         return img, label, meta

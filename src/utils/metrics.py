@@ -96,7 +96,7 @@ class AvgAnomalyScore(Metric):
             res[f'{subgroup_name}_anomaly_score'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds)
-        res['anomaly_score'] = result
+        res[f'{common_string_left(self.subgroup_names)}anomaly_score'] = result
         return res
 
 
@@ -164,7 +164,7 @@ class AUROC(Metric):
             res[f'{subgroup_name}_AUROC'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['AUROC'] = result
+        res[f'{common_string_left(self.subgroup_names)}AUROC'] = result
         return res
 
 
@@ -308,7 +308,7 @@ class AveragePrecision(Metric):
             res[f'{subgroup_name}_AP'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['AP'] = result
+        res[f'{common_string_left(self.subgroup_names)}AP'] = result
         return res
 
 
@@ -391,7 +391,7 @@ class MeanPrecision(Metric):
             res[f'{subgroup_name}_meanPrecision'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['meanPrecision'] = result
+        res[f'{common_string_left(self.subgroup_names)}meanPrecision'] = result
         return res
 
 
@@ -471,7 +471,7 @@ class TPR_at_FPR(Metric):
             res[f'{subgroup_name}_tpr@{self.xfpr}'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets, self.xfpr)
-        res[f'tpr@{self.xfpr}'] = result
+        res[f'{common_string_left(self.subgroup_names)}tpr@{self.xfpr}'] = result
         return res
 
 
@@ -541,7 +541,7 @@ class FPR_at_TPR(Metric):
             res[f'{subgroup_name}_fpr@{self.xtpr}'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets, self.xtpr)
-        res[f'fpr@{self.xtpr}'] = result
+        res[f'{common_string_left(self.subgroup_names)}fpr@{self.xtpr}'] = result
         return res
 
 
@@ -622,7 +622,7 @@ class cDC(Metric):
             res[f'{subgroup_name}_cDC'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['cDC'] = result
+        res[f'{common_string_left(self.subgroup_names)}cDC'] = result
         return res
 
 
@@ -706,7 +706,7 @@ class AverageDSC(Metric):
             res[f'{subgroup_name}_aDSC'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['aDSC'] = result
+        res[f'{common_string_left(self.subgroup_names)}aDSC'] = result
         return res
 
 
@@ -804,7 +804,7 @@ class UpperDSC(Metric):
             res[f'{subgroup_name}_upperDSC'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['upperDSC'] = result
+        res[f'{common_string_left(self.subgroup_names)}upperDSC'] = result
         return res
 
 
@@ -888,7 +888,7 @@ class DSC_at_EER(Metric):
             res[f'{subgroup_name}_DSC@EER'] = result
         # Compute score for whole dataset
         result = self.compute_overall(preds, targets)
-        res['DSC@EER'] = result
+        res[f'{common_string_left(self.subgroup_names)}DSC@EER'] = result
         return res
 
 
@@ -927,6 +927,21 @@ class AvgDictMeter:
 
     def compute(self):
         return {key: value / self.n for key, value in self.values.items()}
+
+
+def common_string_left(strings: List[str]) -> str:
+    """Returns the longest common string of all strings from the left."""
+    if len(strings) == 0:
+        return ''
+    if len(strings) == 1:
+        return strings[0]
+    common = ''
+    for i in range(len(strings[0])):
+        if all([s.startswith(strings[0][:i + 1]) for s in strings]):
+            common = strings[0][:i + 1]
+        else:
+            break
+    return common
 
 
 if __name__ == '__main__':
