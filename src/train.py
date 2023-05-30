@@ -29,12 +29,12 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='rsna', choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr'])
-parser.add_argument('--protected_attr', type=str, default='sex',
+parser.add_argument('--dataset', type=str, default='mimic-cxr', choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr'])
+parser.add_argument('--protected_attr', type=str, default='none',
                     choices=['none', 'age', 'sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)
-parser.add_argument('--img_size', type=int, default=128, help='Image size')
+parser.add_argument('--img_size', type=int, default=256, help='Image size')
 parser.add_argument('--num_workers', type=int, default=0,
                     help='Number of workers for dataloader')
 
@@ -68,7 +68,8 @@ parser.add_argument('--model_type', type=str, default='FAE',
                     choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
 # FAE settings
 parser.add_argument('--hidden_dims', type=int, nargs='+',
-                    default=[100, 150, 200, 300],
+                    # default=[100, 150, 200, 300],
+                    default=[100, 150, 200, 250, 300],
                     help='Autoencoder hidden dimensions')
 parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
 parser.add_argument('--loss_fn', type=str, default='ssim', help='loss function',
@@ -91,7 +92,7 @@ if config.debug:
     config.num_workers = 0
     config.max_steps = 1
     config.val_frequency = 1
-    config.val_steps = 1
+    # config.val_steps = 1
     config.log_frequency = 1
 
 
@@ -360,7 +361,7 @@ def test(config, model, loader, log_dir):
     # Save test results to csv
     if not config.debug:
         csv_path = os.path.join(log_dir, 'test_results.csv')
-        df = pd.DataFrame(metrics_c)
+        df = pd.DataFrame(metrics_c, index=[0])
         for k, v in vars(config).items():
             df[k] = pd.Series([v])
         df.to_csv(csv_path, index=False)

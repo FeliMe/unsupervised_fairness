@@ -20,16 +20,17 @@ mimic-cxr-2.0.0-metadata.csv
 mimic-cxr-2.0.0-chexpert.csv
 """
 import os
-from typing import List, Tuple
+from functools import partial
+from typing import Tuple
 
 import h5py
 import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
-from tqdm import tqdm
 
 from src import MIMIC_CXR_DIR
+from src.data.data_utils import write_hf5_file
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -84,6 +85,9 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
         axis=1
     )
 
+    # Reset index
+    metadata = metadata.reset_index(drop=True)
+
     # Save ordering of files in a new column 'hf5_idx'
     metadata['hf5_idx'] = np.arange(len(metadata))
 
@@ -105,36 +109,14 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     write_hf5_file(
         metadata['path'].values.tolist(),
         hf5_file,
+        load_fn=partial(load_and_resize, target_size=(256, 256)),
         target_size=(256, 256)
     )
 
 
-def write_hf5_file(files: List[str], output_file: str, target_size: Tuple[int, int] = (256, 256)):
-    """Write hf5 file with images and labels."""
-    # Write images to hf5 file
-    hf5_file = h5py.File(output_file, 'w')
-    hf5_file.create_dataset('images', (len(files), 1, *target_size), dtype='float32')
-
-    n_failed = 0
-    failed = []
-    for i, file in tqdm(enumerate(files), total=len(files)):
-        try:
-            image = load_and_resize(file, target_size)
-        except Exception as e:
-            n_failed += 1
-            failed.append(file)
-            print(f"Failed to load image '{file}': {e}")
-            continue
-        hf5_file['images'][i] = image
-
-    print(f"Failed to load {n_failed} images.")
-    for file in failed:
-        print(file)
-    hf5_file.close()
-
-
-def load_and_resize(path, target_size):
+def load_and_resize(path: str, target_size: Tuple[int, int]):
     image = Image.open(path).convert('L')
+    image = transforms.CenterCrop(min(image.size))(image)
     image = transforms.Resize(target_size)(image)
     image = transforms.ToTensor()(image)
     return image
@@ -184,20 +166,30 @@ def load_mimic_cxr_naive_split():
         val_labels[pathology] = val[pathology]['label'].values
         test_labels[pathology] = test[pathology]['label'].values
 
+    hf5_file = h5py.File(
+        os.path.join(
+            MIMIC_CXR_DIR,
+            'hf5',
+            'ap_no_support_devices_no_uncertain.hf5'),
+        'r')['images']
+
     # Return
-    filenames = {'train': normal_train['path'].values.tolist()}
+    filenames = {'train': hf5_file}
     labels = {'train': np.zeros(len(normal_train))}
     meta = {'train': np.zeros(len(normal_train))}
+    index_mapping = {'train': normal_train['hf5_idx'].values}
     for pathology in CHEXPERT_LABELS:
         if pathology == 'No Finding':
             continue
-        filenames[f'val/{pathology}'] = val[pathology]['path'].values.tolist()
+        filenames[f'val/{pathology}'] = hf5_file
         labels[f'val/{pathology}'] = val_labels[pathology]
         meta[f'val/{pathology}'] = np.zeros(len(val[pathology]))
-        filenames[f'test/{pathology}'] = test[pathology]['path'].values.tolist()
+        index_mapping[f'val/{pathology}'] = val[pathology]['hf5_idx'].values
+        filenames[f'test/{pathology}'] = hf5_file
         labels[f'test/{pathology}'] = test_labels[pathology]
         meta[f'test/{pathology}'] = np.zeros(len(test[pathology]))
-    return filenames, labels, meta
+        index_mapping[f'test/{pathology}'] = test[pathology]['hf5_idx'].values
+    return filenames, labels, meta, index_mapping
 
 
 if __name__ == '__main__':

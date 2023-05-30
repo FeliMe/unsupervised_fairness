@@ -144,14 +144,14 @@ class AUROC(Metric):
         # Compute the area under the ROC curve
         auroc = roc_auc_score(subgroup_targets, subgroup_preds)
 
-        return torch.tensor(auroc)
+        return torch.tensor(auroc, dtype=torch.float32)
 
     @staticmethod
     def compute_overall(preds: Tensor, targets: Tensor):
         if targets.sum() == 0 or targets.sum() == len(targets):
             return torch.tensor(0.)
         auroc = roc_auc_score(targets, preds)
-        return torch.tensor(auroc)
+        return torch.tensor(auroc, dtype=torch.float32)
 
     def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
@@ -288,14 +288,14 @@ class AveragePrecision(Metric):
         # Compute the Average Precision
         ap = average_precision_score(subgroup_targets, subgroup_preds)
 
-        return torch.tensor(ap)
+        return torch.tensor(ap, dtype=torch.float32)
 
     @staticmethod
     def compute_overall(preds: Tensor, targets: Tensor):
         if targets.sum() == 0 or targets.sum() == len(targets):
             return torch.tensor(0.)
         ap = average_precision_score(targets, preds)
-        return torch.tensor(ap)
+        return torch.tensor(ap, dtype=torch.float32)
 
     def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
@@ -458,7 +458,7 @@ class TPR_at_FPR(Metric):
             tpr_idx = -1
         else:
             tpr_idx = tpr_idx[-1, 0]
-        return tpr[tpr_idx]
+        return torch.tensor(tpr[tpr_idx], dtype=torch.float32)
 
     def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]
@@ -528,7 +528,7 @@ class FPR_at_TPR(Metric):
             return torch.tensor(1.)
         fpr, tpr, _ = roc_curve(targets, preds, pos_label=1)
         fpr_idx = np.argwhere(tpr > xtpr)[0, 0]
-        return fpr[fpr_idx]
+        return torch.tensor(fpr[fpr_idx], dtype=torch.float32)
 
     def compute(self, **kwargs):
         preds = torch.cat(self.preds)  # [N]

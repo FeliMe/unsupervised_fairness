@@ -1,13 +1,18 @@
 import os
+from functools import partial
 from glob import glob
+from typing import Tuple
 
+import h5py
 import kaggle
 import numpy as np
 import pandas as pd
 import pydicom as dicom
+from torchvision import transforms
 from tqdm import tqdm
 
 from src import RSNA_DIR
+from src.data.data_utils import load_dicom_img, write_hf5_file
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,7 +46,7 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
 
     metadata = []
     files = glob(f"{rsna_dir}/stage_2_train_images/*.dcm")
-    for file in tqdm(files):
+    for i, file in tqdm(enumerate(files), total=len(files)):
         ds = dicom.dcmread(file)
         patient_id = ds.PatientID
         label = class_info[class_info.patientId == patient_id]['class'].values[0]
@@ -49,11 +54,31 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
             'patientId': patient_id,
             'label': CLASS_MAPPING[label],
             'PatientAge': int(ds.PatientAge),
-            'PatientSex': ds.PatientSex
+            'PatientSex': ds.PatientSex,
+            'hf5_idx': i
         })
 
     metadata = pd.DataFrame.from_dict(metadata)
-    metadata.to_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'), index=False)
+    metadata.to_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'), index=True)
+
+    # Write hf5 file with images
+    hf5_dir = os.path.join(rsna_dir, 'hf5')
+    os.makedirs(hf5_dir, exist_ok=True)
+    hf5_file = os.path.join(hf5_dir, 'stage_2_train_images.hf5')
+    print(f'Writing hf5 file to {hf5_file}')
+    write_hf5_file(
+        files,
+        hf5_file,
+        partial(load_and_resize, target_size=(256, 256)),
+        target_size=(256, 256)
+    )
+
+
+def load_and_resize(path: str, target_size: Tuple[int, int]):
+    """Load and resize image."""
+    img = load_dicom_img(path)
+    img = transforms.Resize(target_size, antialias=True)(img)
+    return img
 
 
 def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
@@ -96,6 +121,7 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
     filenames = {}
     labels = {}
     meta = {}
+    index_mapping = {}
     sets = {
         'train': train,
         f'val/{anomaly}': val,
@@ -106,7 +132,8 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
         filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.zeros_like(data['PatientSex'].values)
-    return filenames, labels, meta
+        index_mapping[mode] = np.arange(len(data))
+    return filenames, labels, meta, index_mapping
 
 
 def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
@@ -145,10 +172,10 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     test_male = val_test_male.iloc[50:, :]
     test_female = val_test_female.iloc[50:, :]
     # Aggregate validation and test sets and shuffle
-    val_male = pd.concat([val_test_normal_male, val_male]).sample(frac=1, random_state=42).reset_index(drop=True)
-    val_female = pd.concat([val_test_normal_female, val_female]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_male = pd.concat([val_test_normal_male, test_male]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_female = pd.concat([val_test_normal_female, test_female]).sample(frac=1, random_state=42).reset_index(drop=True)
+    val_male = pd.concat([val_test_normal_male, val_male]).sample(frac=1, random_state=42)
+    val_female = pd.concat([val_test_normal_female, val_female]).sample(frac=1, random_state=42)
+    test_male = pd.concat([val_test_normal_male, test_male]).sample(frac=1, random_state=42)
+    test_female = pd.concat([val_test_normal_female, test_female]).sample(frac=1, random_state=42)
     # Rest of anomal data
     rest_male = male[~male.patientId.isin(val_test_male.patientId)]
     rest_female = female[~female.patientId.isin(val_test_female.patientId)]
@@ -172,7 +199,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
         train_female = pd.concat([train_female[:n_female], train_anomal_female])
 
     # Aggregate training set and shuffle
-    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42).reset_index(drop=True)
+    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
 
     print(f"Using {n_male} male and {n_female} female samples for training.")
 
@@ -180,6 +207,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     filenames = {}
     labels = {}
     meta = {}
+    index_mapping = {}
     sets = {
         'train': train,
         f'val/{anomaly}_male': val_male,
@@ -192,7 +220,8 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
         filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.array([SEX_MAPPING[v] for v in data['PatientSex'].values])
-    return filenames, labels, meta
+        index_mapping[mode] = np.arange(len(data))
+    return filenames, labels, meta, index_mapping
 
 
 def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
@@ -276,6 +305,7 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
     filenames = {}
     labels = {}
     meta = {}
+    index_mapping = {}
     sets = {
         'train': train,
         f'val/{anomaly}_young': val_young,
@@ -288,7 +318,8 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
         filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = data['PatientAge'].values
-    return filenames, labels, meta
+        index_mapping[mode] = np.arange(len(data))
+    return filenames, labels, meta, index_mapping
 
 
 def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
@@ -386,6 +417,7 @@ def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
     filenames = {}
     labels = {}
     meta = {}
+    index_mapping = {}
     sets = {
         'train': train,
         f'val/{anomaly}_young': val_young,
@@ -400,7 +432,8 @@ def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
         filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = data['PatientAge'].values
-    return filenames, labels, meta
+        index_mapping[mode] = np.arange(len(data))
+    return filenames, labels, meta, index_mapping
 
 
 if __name__ == '__main__':

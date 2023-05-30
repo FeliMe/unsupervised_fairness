@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import torch
 from torch import Tensor, Generator
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
@@ -8,7 +9,7 @@ from torchvision import transforms
 from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
 from src.data.camcan_brats import (load_camcan_brats_age_split,
                                    load_camcan_only_age_split)
-from src.data.data_utils import load_dicom_img, load_png_img_grayscale
+from src.data.data_utils import load_dicom_img
 from src.data.mimic_cxr import load_mimic_cxr_naive_split
 from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
                                                load_rsna_gender_split,
@@ -27,26 +28,36 @@ class NormalDataset(Dataset):
             labels: List[int],
             meta: List[int],
             transform=None,
+            index_mapping: Optional[List[int]] = None,
             load_fn: Callable = load_dicom_img):
         """
         :param filenames: Paths to training images
-        :param gender:
+        :param labels: Class labels (0 == normal, other == anomaly)
+        :param meta: Metadata (such as age or sex labels)
+        :param transform: Transformations to apply to images
+        :param index_mapping: Mapping from indices to data
         """
         self.data = data
-        for i, d in enumerate(self.data):
-            if isinstance(d, str):
-                self.data[i] = transform(load_fn(d))
         self.labels = labels
         self.meta = meta
         self.load_fn = load_fn
         self.transform = transform
+        self.index_mapping = index_mapping
+
+        if self.index_mapping is None:
+            self.index_mapping = torch.arange(len(self.data))
+
+        for i, d in enumerate(self.data):
+            if isinstance(d, str):
+                self.data[i] = transform(load_fn(d))
+                self.load_fn = lambda x: x
+                self.transform = lambda x: x
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.labels)
 
     def __getitem__(self, idx: int) -> Tensor:
-        # img = self.transform(self.load_fn(self.data[idx]))
-        img = self.data[idx]
+        img = self.transform(self.load_fn(self.data[self.index_mapping[idx]]))
         label = self.labels[idx]
         meta = self.meta[idx]
         return img, label, meta
@@ -63,6 +74,7 @@ class AnomalFairnessDataset(Dataset):
             labels: Dict[str, List[int]],
             meta: Dict[str, List[int]],
             transform=None,
+            index_mapping: Optional[Dict[str, List[int]]] = None,
             load_fn: Callable = load_dicom_img):
         """
         :param filenames: Paths to images for each subgroup
@@ -74,12 +86,16 @@ class AnomalFairnessDataset(Dataset):
         self.meta = meta
         self.transform = transform
         self.load_fn = load_fn
+        self.index_mapping = index_mapping
+
+        if self.index_mapping is None:
+            self.index_mapping = {mode: torch.arange(len(self.data)) for mode in self.data.keys()}
 
     def __len__(self) -> int:
-        return min([len(v) for v in self.data.values()])
+        return min([len(v) for v in self.labels.values()])
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, int]:
-        img = {k: self.transform(self.load_fn(v[idx])) for k, v in self.data.items()}
+        img = {k: self.transform(self.load_fn(v[self.index_mapping[k][idx]])) for k, v in self.data.items()}
         label = {k: v[idx] for k, v in self.labels.items()}
         meta = {k: v[idx] for k, v in self.meta.items()}
         return img, label, meta
@@ -112,11 +128,11 @@ def get_dataloaders(dataset: str,
     if dataset == 'rsna':
         load_fn = load_dicom_img
         if protected_attr == 'none':
-            data, labels, meta = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
+            data, labels, meta, idx_map = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
         elif protected_attr == 'age':
-            data, labels, meta = load_rsna_age_two_split(RSNA_DIR, old_percent=old_percent, for_supervised=supervised)
+            data, labels, meta, idx_map = load_rsna_age_two_split(RSNA_DIR, old_percent=old_percent, for_supervised=supervised)
         elif protected_attr == 'sex':
-            data, labels, meta = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
+            data, labels, meta, idx_map = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'camcan/brats':
@@ -124,12 +140,13 @@ def get_dataloaders(dataset: str,
             return x
         if protected_attr == 'none':
             raise NotImplementedError
-            # filenames, labels, meta = load_camcan_naive_split(CAMCAN_DIR)
         elif protected_attr == 'age':
-            data, labels, meta = load_camcan_brats_age_split(CAMCAN_DIR, BRATS_DIR,
-                                                             sequence='T2',
-                                                             old_percent=old_percent,
-                                                             slice_range=(73, 103))
+            data, labels, meta, idx_map = load_camcan_brats_age_split(
+                CAMCAN_DIR,
+                BRATS_DIR,
+                sequence='T2',
+                old_percent=old_percent,
+                slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'camcan':
@@ -137,18 +154,19 @@ def get_dataloaders(dataset: str,
             return x
         if protected_attr == 'none':
             raise NotImplementedError
-            # filenames, labels, meta = load_camcan_naive_split(CAMCAN_DIR)
         elif protected_attr == 'age':
-            data, labels, meta = load_camcan_only_age_split(CAMCAN_DIR,
-                                                            sequence='T2',
-                                                            old_percent=old_percent,
-                                                            slice_range=(73, 103))
+            data, labels, meta, idx_map = load_camcan_only_age_split(
+                CAMCAN_DIR,
+                sequence='T2',
+                old_percent=old_percent,
+                slice_range=(73, 103))
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'mimic-cxr':
-        load_fn = load_png_img_grayscale
+        def load_fn(x):
+            return torch.from_numpy(x)
         if protected_attr == 'none':
-            data, labels, meta = load_mimic_cxr_naive_split()
+            data, labels, meta, idx_map = load_mimic_cxr_naive_split()
         else:
             raise NotImplementedError
     else:
@@ -157,12 +175,15 @@ def get_dataloaders(dataset: str,
     train_data = data['train']
     train_labels = labels['train']
     train_meta = meta['train']
+    train_idx_map = idx_map['train']
     val_data = {k: v for k, v in data.items() if 'val' in k}
     val_labels = {k: v for k, v in labels.items() if 'val' in k}
     val_meta = {k: v for k, v in meta.items() if 'val' in k}
+    val_idx_map = {k: v for k, v in idx_map.items() if 'val' in k}
     test_data = {k: v for k, v in data.items() if 'test' in k}
     test_labels = {k: v for k, v in labels.items() if 'test' in k}
     test_meta = {k: v for k, v in meta.items() if 'test' in k}
+    test_idx_map = {k: v for k, v in idx_map.items() if 'test' in k}
 
     # Define transforms
     transform = transforms.Compose([
@@ -171,10 +192,16 @@ def get_dataloaders(dataset: str,
     ])
 
     # Create datasets
-    train_dataset = NormalDataset(train_data, train_labels, train_meta, transform=transform, load_fn=load_fn)
+    train_dataset = NormalDataset(
+        train_data,
+        train_labels,
+        train_meta,
+        transform=transform,
+        index_mapping=train_idx_map,
+        load_fn=load_fn)
     anomal_ds = partial(AnomalFairnessDataset, transform=transform, load_fn=load_fn)
-    val_dataset = anomal_ds(val_data, val_labels, val_meta)
-    test_dataset = anomal_ds(test_data, test_labels, test_meta)
+    val_dataset = anomal_ds(val_data, val_labels, val_meta, index_mapping=val_idx_map)
+    test_dataset = anomal_ds(test_data, test_labels, test_meta, index_mapping=test_idx_map)
 
     # Create dataloaders
     train_dataloader = DataLoader(
