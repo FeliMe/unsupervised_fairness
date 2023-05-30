@@ -304,7 +304,7 @@ class FeatureReconstructor(nn.Module):
         # Anomaly score only where object in the image, i.e. at x > 0
         anomaly_score = []
         for i in range(x.shape[0]):
-            roi = anomaly_map[i][x[i] > 0]
+            roi = anomaly_map[i]
             roi = roi[roi > torch.quantile(roi, 0.9)]
             anomaly_score.append(roi.mean())
         anomaly_score = torch.stack(anomaly_score)

@@ -209,8 +209,14 @@ def get_dataloaders(dataset: str,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        generator=Generator().manual_seed(2147483647))
-    dl = partial(DataLoader, batch_size=batch_size, num_workers=num_workers, collate_fn=group_collate_fn)
+        generator=Generator().manual_seed(2147483647),
+        pin_memory=True)
+    dl = partial(
+        DataLoader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=group_collate_fn,
+        pin_memory=True)
     val_dataloader = dl(
         val_dataset,
         shuffle=False,

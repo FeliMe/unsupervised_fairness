@@ -361,7 +361,7 @@ def test(config, model, loader, log_dir):
     # Save test results to csv
     if not config.debug:
         csv_path = os.path.join(log_dir, 'test_results.csv')
-        df = pd.DataFrame(metrics_c, index=[0])
+        df = pd.DataFrame({k: v.item() for k, v in metrics_c.items()}, index=[0])
         for k, v in vars(config).items():
             df[k] = pd.Series([v])
         df.to_csv(csv_path, index=False)
