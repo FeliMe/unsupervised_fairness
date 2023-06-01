@@ -35,8 +35,14 @@ from src.data.data_utils import write_hf5_file
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+SEX_MAPPING = {
+    'M': 0,
+    'F': 1
+}
+
 
 CHEXPERT_LABELS = [
+    'No Finding',
     'Atelectasis',
     'Cardiomegaly',
     'Consolidation',
@@ -49,21 +55,26 @@ CHEXPERT_LABELS = [
     'Pleural Other',
     'Pneumonia',
     'Pneumothorax',
-    'No Finding',
 ]
 
 
 def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     metadata = pd.read_csv(os.path.join(mimic_dir, 'mimic-cxr-2.0.0-metadata.csv'))
     chexpert = pd.read_csv(os.path.join(mimic_dir, 'mimic-cxr-2.0.0-chexpert.csv'))
+    mimic_sex = pd.read_csv(os.path.join(mimic_dir, 'patients.csv'))  # From MIMIC-IV, v2.2
     print(f"Total number of images: {len(metadata)}")
 
     # We only consider frontal view images. (AP)
     metadata = metadata[metadata['ViewPosition'] == 'AP']
     print(f"Number of frontal view images: {len(metadata)}")
 
+    # Add sex information to metadata
+    metadata = metadata.merge(mimic_sex, on='subject_id')
+    print(f'Number of images with age and sex metadata: {len(metadata)}')
+
     # Match metadata and chexpert.
     metadata = metadata.merge(chexpert, on=['subject_id', 'study_id'])
+    print(f"Number of images with CheXpert labels: {len(metadata)}")
 
     # Exclude images with support devices. 'Support Devices' is NaN
     metadata = metadata[metadata['Support Devices'].isna()]
@@ -96,9 +107,16 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
 
     # Select sets of all pathologies
     pathologies = {}
-    for pathology in CHEXPERT_LABELS:
+    for i, pathology in enumerate(CHEXPERT_LABELS):
         pathologies[pathology] = metadata[metadata[pathology] == 1.0]
         print(f"Number of images for '{pathology}': {len(pathologies[pathology])}")
+        print(f"Number of male patients for '{pathology}': "
+              f"{len(pathologies[pathology][pathologies[pathology]['gender'] == 'M' ])}")
+        print(f"Number of female patients for '{pathology}': "
+              f"{len(pathologies[pathology][pathologies[pathology]['gender'] == 'F' ])}")
+
+        # Add labels
+        pathologies[pathology]['label'] = [i] * len(pathologies[pathology])
 
         # Save files
         pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs', f'{pathology}.csv'), index=True)
@@ -192,7 +210,86 @@ def load_mimic_cxr_naive_split():
     return filenames, labels, meta, index_mapping
 
 
+def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
+                             male_percent: float = 0.5):
+    """Load data with sex-balanced val and test sets."""
+    assert 0.0 <= male_percent <= 1.0
+    female_percent = 1 - male_percent
+
+    # Load metadata
+    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'No Finding.csv'))
+    abnormal = pd.concat([
+        pd.read_csv(os.path.join(THIS_DIR, 'csvs', f'{label}.csv'))
+        for label in CHEXPERT_LABELS if label != 'No Finding'
+    ]).sample(frac=1, random_state=42)
+
+    # Split normal images into train, val, test (use 1000 for val and test)
+    normal_male = normal[normal.gender == 'M']
+    normal_female = normal[normal.gender == 'F']
+    val_test_normal_male = normal_male.sample(n=2000, random_state=42)
+    val_test_normal_female = normal_female.sample(n=2000, random_state=42)
+    val_normal_male = val_test_normal_male[:1000]
+    val_normal_female = val_test_normal_female[:1000]
+    test_normal_male = val_test_normal_male[1000:]
+    test_normal_female = val_test_normal_female[1000:]
+
+    # Split abnormal images into val, test (use maximum 1000 for val and test)
+    abnormal_male = abnormal[abnormal.gender == 'M']
+    abnormal_female = abnormal[abnormal.gender == 'F']
+    val_test_abnormal_male = abnormal_male.sample(n=2000, random_state=42)
+    val_test_abnormal_female = abnormal_female.sample(n=2000, random_state=42)
+    val_abnormal_male = val_test_abnormal_male.iloc[:1000, :]
+    val_abnormal_female = val_test_abnormal_female.iloc[:1000, :]
+    test_abnormal_male = val_test_abnormal_male.iloc[1000:, :]
+    test_abnormal_female = val_test_abnormal_female.iloc[1000:, :]
+
+    # Aggregate validation and test sets and shuffle
+    val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=42)
+    val_female = pd.concat([val_normal_female, val_abnormal_female]).sample(frac=1, random_state=42)
+    test_male = pd.concat([test_normal_male, test_abnormal_male]).sample(frac=1, random_state=42)
+    test_female = pd.concat([test_normal_female, test_abnormal_female]).sample(frac=1, random_state=42)
+
+    # Rest for training
+    rest_normal_male = normal_male[~normal_male.subject_id.isin(val_test_normal_male.subject_id)]
+    rest_normal_female = normal_female[~normal_female.subject_id.isin(val_test_normal_female.subject_id)]
+    n_samples = min(len(rest_normal_male), len(rest_normal_female))
+    n_male = int(n_samples * male_percent)
+    n_female = int(n_samples * female_percent)
+    train_male = rest_normal_male.sample(n=n_male, random_state=42)
+    train_female = rest_normal_female.sample(n=n_female, random_state=42)
+
+    # Aggregate training set and shuffle
+    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
+    print(f"Using {n_male} male and {n_female} female samples for training.")
+
+    hf5_file = h5py.File(
+        os.path.join(
+            mimic_cxr_dir,
+            'hf5',
+            'ap_no_support_devices_no_uncertain.hf5'),
+        'r')['images']
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        'val/male': val_male,
+        'val/female': val_female,
+        'test/male': test_male,
+        'test/female': test_female,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = hf5_file
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.array([SEX_MAPPING[v] for v in data.gender.values])
+        index_mapping[mode] = data.hf5_idx.values
+    return filenames, labels, meta, index_mapping
+
+
 if __name__ == '__main__':
-    prepare_mimic_cxr()
+    # prepare_mimic_cxr()
     # filesnames, labels, meta = load_mimic_cxr_naive_split()
     pass

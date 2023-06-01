@@ -3,7 +3,6 @@ from functools import partial
 from glob import glob
 from typing import Tuple
 
-import h5py
 import kaggle
 import numpy as np
 import pandas as pd
@@ -140,10 +139,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
                            male_percent: float = 0.5,
                            anomaly: str = 'lungOpacity',
                            for_supervised: bool = False):
-    """Load data with age balanced val and test sets. Training is either young, avg, or old.
-    lo = lung opacity
-    oa = other anomaly
-    """
+    """Load data with sex-balanced val and test sets."""
     assert 0.0 <= male_percent <= 1.0
     assert anomaly in ['lungOpacity', 'otherAnomaly']
     female_percent = 1 - male_percent

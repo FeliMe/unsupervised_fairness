@@ -2,15 +2,16 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import torch
-from torch import Tensor, Generator
+from torch import Generator, Tensor
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
-from src import BRATS_DIR, CAMCAN_DIR, RSNA_DIR
+from src import BRATS_DIR, CAMCAN_DIR, MIMIC_CXR_DIR, RSNA_DIR
 from src.data.camcan_brats import (load_camcan_brats_age_split,
                                    load_camcan_only_age_split)
 from src.data.data_utils import load_dicom_img
-from src.data.mimic_cxr import load_mimic_cxr_naive_split
+from src.data.mimic_cxr import (load_mimic_cxr_naive_split,
+                                load_mimic_cxr_sex_split)
 from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
                                                load_rsna_gender_split,
                                                load_rsna_naive_split)
@@ -167,6 +168,10 @@ def get_dataloaders(dataset: str,
             return torch.from_numpy(x)
         if protected_attr == 'none':
             data, labels, meta, idx_map = load_mimic_cxr_naive_split()
+        if protected_attr == 'sex':
+            data, labels, meta, idx_map = load_mimic_cxr_sex_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR,
+                male_percent=male_percent)
         else:
             raise NotImplementedError
     else:
