@@ -9,10 +9,7 @@ import torch
 import wandb
 
 from src.data.datasets import get_dataloaders
-from src.models.DeepSVDD.deepsvdd import DeepSVDD
-from src.models.FAE.fae import FeatureReconstructor
-from src.models.RD.reverse_distillation import ReverseDistillation
-from src.models.supervised.resnet import ResNet18
+from src.models.models import init_model
 from src.utils.metrics import AvgDictMeter, build_metrics
 from src.utils.utils import seed_everything, save_checkpoint
 
@@ -65,10 +62,10 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='FAE',
-                    choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18'])
+parser.add_argument('--model_type', type=str, default='UncertaintyAE',
+                    choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18', 'UncertaintyAE'])
 # FAE settings
-parser.add_argument('--hidden_dims', type=int, nargs='+',
+parser.add_argument('--fae_hidden_dims', type=int, nargs='+',
                     # default=[100, 150, 200, 300],
                     default=[100, 150, 200, 250, 300],
                     help='Autoencoder hidden dimensions')
@@ -82,6 +79,12 @@ parser.add_argument('--keep_feature_prop', type=float, default=1.0,
 # DeepSVDD settings
 parser.add_argument('--repr_dim', type=int, default=256,
                     help='Dimensionality of the hypersphere c')
+# UncertaintyAE settings
+parser.add_argument('--uae_hidden_dims', type=int, nargs='+',
+                    default=[32, 64, 128, 256],
+                    help='Autoencoder hidden dimensions')
+parser.add_argument('--latent_dim', type=int, default=128,
+                    help='Size of the latent space')
 
 config = parser.parse_args()
 
@@ -113,31 +116,6 @@ train_loader, val_loader, test_loader = get_dataloaders(
     supervised=config.supervised
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
-
-
-""""""""""""""""""""""""""""""""" Init model """""""""""""""""""""""""""""""""
-
-
-def init_model(config):
-    print("Initializing model...")
-    if config.model_type == 'FAE':
-        model = FeatureReconstructor(config)
-    elif config.model_type == 'RD':
-        model = ReverseDistillation(config)
-    elif config.model_type == 'DeepSVDD':
-        model = DeepSVDD(config)
-    elif config.model_type == 'ResNet18':
-        model = ResNet18(config)
-    else:
-        raise ValueError(f'Unknown model type {config.model_type}')
-    model = model.to(config.device)
-    compiled_model = torch.compile(model)
-
-    # Init optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
-                                 weight_decay=config.weight_decay)
-
-    return model, compiled_model, optimizer
 
 
 """"""""""""""""""""""""""""""""" Training """""""""""""""""""""""""""""""""

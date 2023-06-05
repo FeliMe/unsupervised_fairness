@@ -254,12 +254,12 @@ class FeatureReconstructor(nn.Module):
 
         config.in_channels = self.extractor.c_feats
         self.enc = VanillaFeatureEncoder(config.in_channels,
-                                         config.hidden_dims,
+                                         config.fae_hidden_dims,
                                          norm_layer="nn.BatchNorm2d",
                                          dropout=config.dropout,
                                          bias=False)
         self.dec = VanillaFeatureDecoder(config.in_channels,
-                                         config.hidden_dims,
+                                         config.fae_hidden_dims,
                                          norm_layer="nn.BatchNorm2d",
                                          dropout=config.dropout,
                                          bias=False)
