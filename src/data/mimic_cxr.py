@@ -59,6 +59,10 @@ CHEXPERT_LABELS = [
 
 
 def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
+    # mimic_dir = "/vol/aimspace/projects/mimic_cxr/mimic-cxr-jpg_2-0-0"
+    # metadata = pd.read_csv("/vol/aimspace/projects/mimic_cxr/mimic-cxr-jpg_2-0-0/mimic-cxr-2.0.0-metadata.csv.gz")
+    # chexpert = pd.read_csv("/vol/aimspace/projects/mimic_cxr/mimic-cxr-jpg_2-0-0/mimic-cxr-2.0.0-chexpert.csv.gz")
+    # mimic_sex = pd.read_csv("/vol/aimspace/users/meissen/patients.csv")  # From MIMIC-IV, v2.2
     metadata = pd.read_csv(os.path.join(mimic_dir, 'mimic-cxr-2.0.0-metadata.csv'))
     chexpert = pd.read_csv(os.path.join(mimic_dir, 'mimic-cxr-2.0.0-chexpert.csv'))
     mimic_sex = pd.read_csv(os.path.join(mimic_dir, 'patients.csv'))  # From MIMIC-IV, v2.2
@@ -103,6 +107,7 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     metadata['hf5_idx'] = np.arange(len(metadata))
 
     hf5_dir = os.path.join(mimic_dir, 'hf5')
+    # hf5_dir = '/vol/aimspace/users/meissen/datasets/MIMIC-CXR/hf5'
     os.makedirs(hf5_dir, exist_ok=True)
 
     # Select sets of all pathologies
@@ -119,7 +124,8 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
         pathologies[pathology]['label'] = [i] * len(pathologies[pathology])
 
         # Save files
-        pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs', f'{pathology}.csv'), index=True)
+        os.makedirs(os.path.join(THIS_DIR, 'csvs/mimic-cxr'), exist_ok=True)
+        pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr/', f'{pathology}.csv'), index=True)
 
     # Write hf5 files for whole dataset
     hf5_file = os.path.join(hf5_dir, 'ap_no_support_devices_no_uncertain.hf5')
@@ -142,9 +148,9 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
 
 def load_mimic_cxr_naive_split():
     """Load MIMIC-CXR dataset with naive split."""
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'No Finding.csv'))
+    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
     abnormal = {
-        label: pd.read_csv(os.path.join(THIS_DIR, 'csvs', f'{label}.csv'))
+        label: pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
         for label in CHEXPERT_LABELS if label != 'No Finding'
     }
 
@@ -217,31 +223,31 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     female_percent = 1 - male_percent
 
     # Load metadata
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'No Finding.csv'))
+    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
     abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs', f'{label}.csv'))
+        pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
         for label in CHEXPERT_LABELS if label != 'No Finding'
     ]).sample(frac=1, random_state=42)
 
-    # Split normal images into train, val, test (use 1000 for val and test)
+    # Split normal images into train, val, test (use 500 for val and test)
     normal_male = normal[normal.gender == 'M']
     normal_female = normal[normal.gender == 'F']
-    val_test_normal_male = normal_male.sample(n=2000, random_state=42)
-    val_test_normal_female = normal_female.sample(n=2000, random_state=42)
-    val_normal_male = val_test_normal_male[:1000]
-    val_normal_female = val_test_normal_female[:1000]
-    test_normal_male = val_test_normal_male[1000:]
-    test_normal_female = val_test_normal_female[1000:]
+    val_test_normal_male = normal_male.sample(n=1000, random_state=42)
+    val_test_normal_female = normal_female.sample(n=1000, random_state=42)
+    val_normal_male = val_test_normal_male[:500]
+    val_normal_female = val_test_normal_female[:500]
+    test_normal_male = val_test_normal_male[500:]
+    test_normal_female = val_test_normal_female[500:]
 
-    # Split abnormal images into val, test (use maximum 1000 for val and test)
+    # Split abnormal images into val, test (use maximum 500 for val and test)
     abnormal_male = abnormal[abnormal.gender == 'M']
     abnormal_female = abnormal[abnormal.gender == 'F']
-    val_test_abnormal_male = abnormal_male.sample(n=2000, random_state=42)
-    val_test_abnormal_female = abnormal_female.sample(n=2000, random_state=42)
-    val_abnormal_male = val_test_abnormal_male.iloc[:1000, :]
-    val_abnormal_female = val_test_abnormal_female.iloc[:1000, :]
-    test_abnormal_male = val_test_abnormal_male.iloc[1000:, :]
-    test_abnormal_female = val_test_abnormal_female.iloc[1000:, :]
+    val_test_abnormal_male = abnormal_male.sample(n=1000, random_state=42)
+    val_test_abnormal_female = abnormal_female.sample(n=1000, random_state=42)
+    val_abnormal_male = val_test_abnormal_male.iloc[:500, :]
+    val_abnormal_female = val_test_abnormal_female.iloc[:500, :]
+    test_abnormal_male = val_test_abnormal_male.iloc[500:, :]
+    test_abnormal_female = val_test_abnormal_female.iloc[500:, :]
 
     # Aggregate validation and test sets and shuffle
     val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=42)
@@ -289,7 +295,102 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     return filenames, labels, meta, index_mapping
 
 
+def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
+                             old_percent: float = 0.5):
+    """Load data with age-balanced val and test sets."""
+    assert 0.0 <= old_percent <= 1.0
+    young_percent = 1 - old_percent
+
+    # Load metadata
+    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
+    abnormal = pd.concat([
+        pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
+        for label in CHEXPERT_LABELS if label != 'No Finding'
+    ]).sample(frac=1, random_state=42)
+
+    # Filter ages over 90 years (outliers in MIMIC-IV)
+    normal = normal[normal.anchor_age < 91]
+    abnormal = abnormal[abnormal.anchor_age < 91]
+
+    # Split data into bins by age
+    # n_bins = 3
+    # t = np.histogram(normal.anchor_age, bins=n_bins)[1]
+    # print(f"Splitting data into {n_bins - 1} bins by age: {t}")
+
+    # normal_young = normal[normal.anchor_age < t[1]]
+    # normal_old = normal[normal.anchor_age >= t[2]]
+    # abnormal_young = abnormal[abnormal.anchor_age < t[1]]
+    # abnormal_old = abnormal[abnormal.anchor_age >= t[2]]
+
+    max_young = 41  # 31  # 41
+    min_old = 66  # 61  # 66
+    normal_young = normal[normal.anchor_age <= max_young]
+    normal_old = normal[normal.anchor_age >= min_old]
+    abnormal_young = abnormal[abnormal.anchor_age <= max_young]
+    abnormal_old = abnormal[abnormal.anchor_age >= min_old]
+
+    # Split normal images into train, val, test (use 500 for val and test)
+    val_test_normal_old = normal_old.sample(n=1000, random_state=42)
+    val_test_normal_young = normal_young.sample(n=1000, random_state=42)
+    val_normal_old = val_test_normal_old[:500]
+    val_normal_young = val_test_normal_young[:500]
+    test_normal_old = val_test_normal_old[500:]
+    test_normal_young = val_test_normal_young[500:]
+
+    # Split abnormal images into val, test (use maximum 500 for val and test)
+    val_test_abnormal_old = abnormal_old.sample(n=1000, random_state=42)
+    val_test_abnormal_young = abnormal_young.sample(n=1000, random_state=42)
+    val_abnormal_old = val_test_abnormal_old.iloc[:500, :]
+    val_abnormal_young = val_test_abnormal_young.iloc[:500, :]
+    test_abnormal_old = val_test_abnormal_old.iloc[500:, :]
+    test_abnormal_young = val_test_abnormal_young.iloc[500:, :]
+
+    # Aggregate validation and test sets and shuffle
+    val_old = pd.concat([val_normal_old, val_abnormal_old]).sample(frac=1, random_state=42)
+    val_young = pd.concat([val_normal_young, val_abnormal_young]).sample(frac=1, random_state=42)
+    test_old = pd.concat([test_normal_old, test_abnormal_old]).sample(frac=1, random_state=42)
+    test_young = pd.concat([test_normal_young, test_abnormal_young]).sample(frac=1, random_state=42)
+
+    # Rest for training
+    rest_normal_old = normal_old[~normal_old.subject_id.isin(val_test_normal_old.subject_id)]
+    rest_normal_young = normal_young[~normal_young.subject_id.isin(val_test_normal_young.subject_id)]
+    n_samples = min(len(rest_normal_old), len(rest_normal_young))
+    n_old = int(n_samples * old_percent)
+    n_young = int(n_samples * young_percent)
+    train_old = rest_normal_old.sample(n=n_old, random_state=42)
+    train_young = rest_normal_young.sample(n=n_young, random_state=42)
+
+    # Aggregate training set and shuffle
+    train = pd.concat([train_old, train_young]).sample(frac=1, random_state=42)
+    print(f"Using {n_old} old and {n_young} young samples for training.")
+
+    hf5_file = h5py.File(
+        os.path.join(
+            mimic_cxr_dir,
+            'hf5',
+            'ap_no_support_devices_no_uncertain.hf5'),
+        'r')['images']
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        'val/old': val_old,
+        'val/young': val_young,
+        'test/old': test_old,
+        'test/young': test_young,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = hf5_file
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.array([SEX_MAPPING[v] for v in data.gender.values])
+        index_mapping[mode] = data.hf5_idx.values
+    return filenames, labels, meta, index_mapping
+
+
 if __name__ == '__main__':
     # prepare_mimic_cxr()
-    # filesnames, labels, meta = load_mimic_cxr_naive_split()
     pass

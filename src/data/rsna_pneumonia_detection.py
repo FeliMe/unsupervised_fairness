@@ -246,14 +246,21 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
     data = data[data.PatientAge < 110]
 
     # Split data into bins by age
-    n_bins = 3
-    t = np.histogram(normal_data.PatientAge, bins=n_bins)[1]
-    print(f"Splitting data into {n_bins - 1} bins by age: {t}")
+    # n_bins = 3
+    # t = np.histogram(normal_data.PatientAge, bins=n_bins)[1]
+    # print(f"Splitting data into {n_bins - 1} bins by age: {t}")
 
-    normal_young = normal_data[normal_data.PatientAge < t[1]]
-    normal_old = normal_data[normal_data.PatientAge >= t[2]]
-    young = data[data.PatientAge < t[1]]
-    old = data[data.PatientAge >= t[2]]
+    # normal_young = normal_data[normal_data.PatientAge < t[1]]
+    # normal_old = normal_data[normal_data.PatientAge >= t[2]]
+    # young = data[data.PatientAge < t[1]]
+    # old = data[data.PatientAge >= t[2]]
+
+    max_young = 31  # 41
+    min_old = 61  # 66
+    normal_young = normal_data[normal_data.PatientAge <= max_young]
+    normal_old = normal_data[normal_data.PatientAge >= min_old]
+    young = data[data.PatientAge <= max_young]
+    old = data[data.PatientAge >= min_old]
 
     # Save 100 young and 100 old samples for every label for validation and test
     # Normal

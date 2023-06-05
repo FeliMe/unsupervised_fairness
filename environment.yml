@@ -9,12 +9,12 @@ dependencies:
   - conda-forge::pip
   - conda-forge::flake8
 
-  - pytorch::pytorch-cuda=11.6
-  - pytorch::pytorch==1.13.1
-  - pytorch::torchvision==0.14.1
-  # - pytorch::pytorch-cuda=11.8
-  # - pytorch::pytorch=2.0.0
-  # - pytorch::torchvision=0.15.0
+  # - pytorch::pytorch-cuda=11.6
+  # - pytorch::pytorch==1.13.1
+  # - pytorch::torchvision==0.14.1
+  - pytorch::pytorch-cuda=11.8
+  - pytorch::pytorch=2.0.0
+  - pytorch::torchvision=0.15.0
   - conda-forge::torchmetrics
   - conda-forge::matplotlib
   - conda-forge::scikit-learn
@@ -29,3 +29,9 @@ dependencies:
 
   - pip:
     - tensorboard
+
+# variables:
+#   RSNA_DIR: /vol/aimspace/users/felix/datasets/RSNA
+#   CAMCAN_DIR: /vol/aimspace/users/felix/datasets/CamCAN
+#   BRATS_DIR: /vol/aimspace/users/felix/datasets/BraTS
+#   MIMIC_CXR_DIR: /vol/aimspace/users/felix/datasets/MIMIC-CXR
