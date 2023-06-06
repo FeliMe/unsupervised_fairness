@@ -23,14 +23,13 @@ import os
 from functools import partial
 from typing import Tuple
 
-import h5py
 import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
 
 from src import MIMIC_CXR_DIR
-from src.data.data_utils import write_hf5_file
+from src.data.data_utils import read_memmap, write_memmap
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -103,12 +102,12 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     # Reset index
     metadata = metadata.reset_index(drop=True)
 
-    # Save ordering of files in a new column 'hf5_idx'
-    metadata['hf5_idx'] = np.arange(len(metadata))
+    # Save ordering of files in a new column 'memmap_idx'
+    metadata['memmap_idx'] = np.arange(len(metadata))
 
-    hf5_dir = os.path.join(mimic_dir, 'hf5')
-    # hf5_dir = '/vol/aimspace/users/meissen/datasets/MIMIC-CXR/hf5'
-    os.makedirs(hf5_dir, exist_ok=True)
+    memmap_dir = os.path.join(mimic_dir, 'memmap')
+    # memmap_dir = '/vol/aimspace/users/meissen/datasets/MIMIC-CXR/memmap'
+    os.makedirs(memmap_dir, exist_ok=True)
 
     # Select sets of all pathologies
     pathologies = {}
@@ -127,12 +126,12 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
         os.makedirs(os.path.join(THIS_DIR, 'csvs/mimic-cxr'), exist_ok=True)
         pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr/', f'{pathology}.csv'), index=True)
 
-    # Write hf5 files for whole dataset
-    hf5_file = os.path.join(hf5_dir, 'ap_no_support_devices_no_uncertain.hf5')
-    print(f"Writing hf5 file '{hf5_file}'...")
-    write_hf5_file(
+    # Write memmap files for whole dataset
+    memmap_file = os.path.join(memmap_dir, 'ap_no_support_devices_no_uncertain')
+    print(f"Writing memmap file '{memmap_file}'...")
+    write_memmap(
         metadata['path'].values.tolist(),
-        hf5_file,
+        memmap_file,
         load_fn=partial(load_and_resize, target_size=(256, 256)),
         target_size=(256, 256)
     )
@@ -190,29 +189,29 @@ def load_mimic_cxr_naive_split():
         val_labels[pathology] = val[pathology]['label'].values
         test_labels[pathology] = test[pathology]['label'].values
 
-    hf5_file = h5py.File(
+    img_data = read_memmap(
         os.path.join(
             MIMIC_CXR_DIR,
-            'hf5',
-            'ap_no_support_devices_no_uncertain.hf5'),
-        'r')['images']
+            'memmap',
+            'ap_no_support_devices_no_uncertain'),
+    )
 
     # Return
-    filenames = {'train': hf5_file}
+    filenames = {'train': img_data}
     labels = {'train': np.zeros(len(normal_train))}
     meta = {'train': np.zeros(len(normal_train))}
-    index_mapping = {'train': normal_train['hf5_idx'].values}
+    index_mapping = {'train': normal_train['memmap_idx'].values}
     for pathology in CHEXPERT_LABELS:
         if pathology == 'No Finding':
             continue
-        filenames[f'val/{pathology}'] = hf5_file
+        filenames[f'val/{pathology}'] = img_data
         labels[f'val/{pathology}'] = val_labels[pathology]
         meta[f'val/{pathology}'] = np.zeros(len(val[pathology]))
-        index_mapping[f'val/{pathology}'] = val[pathology]['hf5_idx'].values
-        filenames[f'test/{pathology}'] = hf5_file
+        index_mapping[f'val/{pathology}'] = val[pathology]['memmap_idx'].values
+        filenames[f'test/{pathology}'] = img_data
         labels[f'test/{pathology}'] = test_labels[pathology]
         meta[f'test/{pathology}'] = np.zeros(len(test[pathology]))
-        index_mapping[f'test/{pathology}'] = test[pathology]['hf5_idx'].values
+        index_mapping[f'test/{pathology}'] = test[pathology]['memmap_idx'].values
     return filenames, labels, meta, index_mapping
 
 
@@ -268,12 +267,12 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
     print(f"Using {n_male} male and {n_female} female samples for training.")
 
-    hf5_file = h5py.File(
+    img_data = read_memmap(
         os.path.join(
-            mimic_cxr_dir,
-            'hf5',
-            'ap_no_support_devices_no_uncertain.hf5'),
-        'r')['images']
+            MIMIC_CXR_DIR,
+            'memmap',
+            'ap_no_support_devices_no_uncertain'),
+    )
 
     # Return
     filenames = {}
@@ -288,10 +287,10 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
         'test/female': test_female,
     }
     for mode, data in sets.items():
-        filenames[mode] = hf5_file
+        filenames[mode] = img_data
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.array([SEX_MAPPING[v] for v in data.gender.values])
-        index_mapping[mode] = data.hf5_idx.values
+        index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
 
@@ -364,12 +363,12 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     train = pd.concat([train_old, train_young]).sample(frac=1, random_state=42)
     print(f"Using {n_old} old and {n_young} young samples for training.")
 
-    hf5_file = h5py.File(
+    img_data = read_memmap(
         os.path.join(
-            mimic_cxr_dir,
-            'hf5',
-            'ap_no_support_devices_no_uncertain.hf5'),
-        'r')['images']
+            MIMIC_CXR_DIR,
+            'memmap',
+            'ap_no_support_devices_no_uncertain'),
+    )
 
     # Return
     filenames = {}
@@ -384,13 +383,13 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
         'test/young': test_young,
     }
     for mode, data in sets.items():
-        filenames[mode] = hf5_file
+        filenames[mode] = img_data
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.array([SEX_MAPPING[v] for v in data.gender.values])
-        index_mapping[mode] = data.hf5_idx.values
+        index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
 
 if __name__ == '__main__':
-    # prepare_mimic_cxr()
+    prepare_mimic_cxr()
     pass

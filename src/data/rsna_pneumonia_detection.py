@@ -11,7 +11,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from src import RSNA_DIR
-from src.data.data_utils import load_dicom_img, write_hf5_file
+from src.data.data_utils import load_dicom_img, write_memmap
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -54,20 +54,20 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
             'label': CLASS_MAPPING[label],
             'PatientAge': int(ds.PatientAge),
             'PatientSex': ds.PatientSex,
-            'hf5_idx': i
+            'memmap_idx': i
         })
 
     metadata = pd.DataFrame.from_dict(metadata)
     metadata.to_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'), index=True)
 
-    # Write hf5 file with images
-    hf5_dir = os.path.join(rsna_dir, 'hf5')
-    os.makedirs(hf5_dir, exist_ok=True)
-    hf5_file = os.path.join(hf5_dir, 'stage_2_train_images.hf5')
-    print(f'Writing hf5 file to {hf5_file}')
-    write_hf5_file(
+    # Write memmap file with images
+    memmap_dir = os.path.join(rsna_dir, 'memmap')
+    os.makedirs(memmap_dir, exist_ok=True)
+    memmap_file = os.path.join(memmap_dir, 'stage_2_train_images')
+    print(f'Writing memmap file to {memmap_file}')
+    write_memmap(
         files,
-        hf5_file,
+        memmap_file,
         partial(load_and_resize, target_size=(256, 256)),
         target_size=(256, 256)
     )
