@@ -26,7 +26,7 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='cxr14',
+parser.add_argument('--dataset', type=str, default='rsna',
                     choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr', 'cxr14'])
 parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex'])
@@ -62,7 +62,7 @@ parser.add_argument('--max_steps', type=int, default=8000,  # 10000
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
-parser.add_argument('--model_type', type=str, default='UncertaintyAE',
+parser.add_argument('--model_type', type=str, default='FAE',
                     choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18', 'UncertaintyAE'])
 # FAE settings
 parser.add_argument('--fae_hidden_dims', type=int, nargs='+',

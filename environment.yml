@@ -31,7 +31,8 @@ dependencies:
     - tensorboard
 
 # variables:
-#   RSNA_DIR: /vol/aimspace/users/felix/datasets/RSNA
-#   CAMCAN_DIR: /vol/aimspace/users/felix/datasets/CamCAN
-#   BRATS_DIR: /vol/aimspace/users/felix/datasets/BraTS
-#   MIMIC_CXR_DIR: /vol/aimspace/users/felix/datasets/MIMIC-CXR
+#   RSNA_DIR: /vol/aimspace/users/meissen/datasets/RSNA
+#   CAMCAN_DIR: /vol/aimspace/users/meissen/datasets/CamCAN
+#   BRATS_DIR: /vol/aimspace/users/meissen/datasets/BraTS
+#   MIMIC_CXR_DIR: /vol/aimspace/users/meissen/datasets/MIMIC-CXR
+#   CXR14_DIR: /vol/aimspace/users/meissen/datasets/CXR8

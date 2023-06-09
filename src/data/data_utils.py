@@ -26,7 +26,7 @@ def load_png_img_grayscale(filename: str) -> Tensor:
     return img
 
 
-def write_hf5_file(files: List[str], output_file: str, load_fn: Callable, target_size: Tuple[int, int]):
+def write_hf5(files: List[str], output_file: str, load_fn: Callable, target_size: Tuple[int, int]):
     """Write hf5 file with images and labels."""
     # Write images to hf5 file
     hf5_file = h5py.File(output_file, 'w')

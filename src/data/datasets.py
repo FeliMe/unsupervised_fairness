@@ -169,7 +169,7 @@ def get_dataloaders(dataset: str,
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'mimic-cxr':
         def load_fn(x):
-            return torch.from_numpy(x)
+            return torch.tensor(x)
         if protected_attr == 'none':
             data, labels, meta, idx_map = load_mimic_cxr_naive_split()
         elif protected_attr == 'sex':
@@ -184,7 +184,7 @@ def get_dataloaders(dataset: str,
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'cxr14':
         def load_fn(x):
-            return torch.from_numpy(x)
+            return torch.tensor(x)
         if protected_attr == 'none':
             data, labels, meta, idx_map = load_cxr14_naive_split()
         elif protected_attr == 'sex':

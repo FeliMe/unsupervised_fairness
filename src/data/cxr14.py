@@ -9,14 +9,13 @@ import os
 from functools import partial
 from typing import Tuple
 
-import h5py
 import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
 
 from src import CXR14_DIR
-from src.data.data_utils import write_hf5_file
+from src.data.data_utils import read_memmap, write_memmap
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -66,11 +65,11 @@ def prepare_cxr14(cxr14_dir: str = CXR14_DIR):
     # Reset index
     metadata = metadata.reset_index(drop=True)
 
-    # Save ordering of files in a new column 'hf5_idx'
-    metadata['hf5_idx'] = np.arange(len(metadata))
+    # Save ordering of files in a new column 'memmap_idx'
+    metadata['memmap_idx'] = np.arange(len(metadata))
 
-    hf5_dir = os.path.join(cxr14_dir, 'hf5')
-    os.makedirs(hf5_dir, exist_ok=True)
+    memmap_dir = os.path.join(cxr14_dir, 'memmap')
+    os.makedirs(memmap_dir, exist_ok=True)
 
     # Select sets of all pathologies
     pathologies = {}
@@ -86,12 +85,12 @@ def prepare_cxr14(cxr14_dir: str = CXR14_DIR):
         os.makedirs(os.path.join(THIS_DIR, 'csvs/cxr14'), exist_ok=True)
         pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs/cxr14', f'{pathology}.csv'), index=True)
 
-    # Write hf5 files for whole dataset
-    hf5_file = os.path.join(hf5_dir, 'cxr14_ap_only.hf5')
-    print(f"Writing hf5 file '{hf5_file}'...")
-    write_hf5_file(
+    # Write memmap files for whole dataset
+    memmap_file = os.path.join(memmap_dir, 'cxr14_ap_only')
+    print(f"Writing memmap file '{memmap_file}'...")
+    write_memmap(
         metadata['path'].values.tolist(),
-        hf5_file,
+        memmap_file,
         load_fn=partial(load_and_resize, target_size=(256, 256)),
         target_size=(256, 256)
     )
@@ -127,12 +126,12 @@ def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
     val = pd.concat([val_normal, val_abnormal]).sample(frac=1, random_state=42)
     test = pd.concat([test_normal, test_abnormal]).sample(frac=1, random_state=42)
 
-    hf5_file = h5py.File(
+    memmap_file = read_memmap(
         os.path.join(
             cxr14_dir,
-            'hf5',
-            'cxr14_ap_only.hf5'),
-        'r')['images']
+            'memmap',
+            'cxr14_ap_only'),
+    )
 
     # Return
     filenames = {}
@@ -145,10 +144,10 @@ def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
         'test': test,
     }
     for mode, data in sets.items():
-        filenames[mode] = hf5_file
+        filenames[mode] = memmap_file
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.zeros(len(data), dtype=np.float32)
-        index_mapping[mode] = data.hf5_idx.values
+        index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
 
@@ -203,12 +202,12 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
     train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
     print(f"Using {n_male} male and {n_female} female samples for training.")
 
-    hf5_file = h5py.File(
+    memmap_file = read_memmap(
         os.path.join(
             cxr14_dir,
-            'hf5',
-            'cxr14_ap_only.hf5'),
-        'r')['images']
+            'memmap',
+            'cxr14_ap_only'),
+    )
 
     # Return
     filenames = {}
@@ -223,10 +222,10 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
         'test/female': test_female,
     }
     for mode, data in sets.items():
-        filenames[mode] = hf5_file
+        filenames[mode] = memmap_file
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.zeros(len(data), dtype=np.float32)
-        index_mapping[mode] = data.hf5_idx.values
+        index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
 
@@ -293,12 +292,12 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
     train = pd.concat([train_old, train_young]).sample(frac=1, random_state=42)
     print(f"Using {n_old} old and {n_young} young samples for training.")
 
-    hf5_file = h5py.File(
+    memmap_file = read_memmap(
         os.path.join(
             cxr14_dir,
-            'hf5',
-            'cxr14_ap_only.hf5'),
-        'r')['images']
+            'memmap',
+            'cxr14_ap_only'),
+    )
 
     # Return
     filenames = {}
@@ -313,10 +312,10 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
         'test/young': test_young,
     }
     for mode, data in sets.items():
-        filenames[mode] = hf5_file
+        filenames[mode] = memmap_file
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.zeros(len(data), dtype=np.float32)
-        index_mapping[mode] = data.hf5_idx.values
+        index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
 
