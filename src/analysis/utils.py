@@ -28,6 +28,9 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+import torch
+
+from src.utils.metrics import build_metrics
 
 
 def gather_data_seeds(experiment_dir: str, attr_key: str, metric_names: List[str]):
@@ -44,6 +47,40 @@ def gather_data_seeds(experiment_dir: str, attr_key: str, metric_names: List[str
             results_file = os.path.join(seed_dir, 'test_results.csv')
             df = pd.read_csv(results_file)
             seed_dfs.append(df)
+        df = pd.concat(seed_dfs)
+        run_dfs.append(df)
+        attr_key_values.append(df[attr_key].values[0])
+    # Sort by protected attribute
+    run_dfs = [df for _, df in sorted(zip(attr_key_values, run_dfs))]
+    attr_key_values = np.sort(np.array(attr_key_values))
+    # Build results dictionary
+    results = {metric: [] for metric in metric_names}
+    for df in run_dfs:
+        for metric in metric_names:
+            results[metric].append(df[metric].values)
+    results = {metric: np.stack(vals, axis=0) for metric, vals in results.items()}
+    return results, attr_key_values
+
+
+def gather_data_from_anomaly_scores(experiment_dir: str, attr_key: str, metric_names: List[str]):
+    """Gather the data of multiple random seeds
+    Loads the anomaly-scores.csv file instead of the test_results.csv file
+    and computes the metrics on the fly
+    """
+    run_dirs = [os.path.join(experiment_dir, run_dir) for run_dir in os.listdir(experiment_dir)]
+    run_dirs = sorted(run_dirs)
+    run_dfs = []
+    attr_key_values = []
+    for run_dir in run_dirs:
+        seed_dirs = [os.path.join(run_dir, seed_dir) for seed_dir in os.listdir(run_dir)]
+        seed_dfs = []
+        for seed_dir in seed_dirs:
+            scores_file = os.path.join(seed_dir, 'anomaly_scores.csv')
+            df = pd.read_csv(scores_file)
+            results = compute_metrics_from_scores_file(df)
+            seed_df = pd.DataFrame(results, index=[0])
+            seed_df[attr_key] = df[attr_key].values[0]
+            seed_dfs.append(seed_df)
         df = pd.concat(seed_dfs)
         run_dfs.append(df)
         attr_key_values.append(df[attr_key].values[0])
@@ -76,3 +113,17 @@ def avg_numeric_in_df(df: pd.DataFrame):
             df[col] = df[col].mean()
     df = df.iloc[:1]
     return df
+
+
+def compute_metrics_from_scores_file(df: pd.DataFrame):
+    """Compute the metrics from the anomaly scores"""
+    subgroup_names = df.subgroup_name.unique().tolist()
+    subgroup_mapping = {subgroup_name: i for i, subgroup_name in enumerate(subgroup_names)}
+    metrics = build_metrics(subgroup_names)
+    for subgroup_name in subgroup_names:
+        subgroup_df = df[df.subgroup_name == subgroup_name]
+        anomaly_scores = torch.tensor(subgroup_df.anomaly_score.values)
+        labels = torch.tensor(subgroup_df.label.values)
+        subgroup = torch.tensor([subgroup_mapping[subgroup_name]] * len(labels))
+        metrics.update(subgroup, anomaly_scores, labels)
+    return {k: v.item() for k, v in metrics.compute().items()}

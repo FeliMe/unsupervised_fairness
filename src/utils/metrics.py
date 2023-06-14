@@ -1,6 +1,3 @@
-"""
-Bootstrapping method from https://sebastianraschka.com/blog/2022/confidence-intervals-for-ml.html
-"""
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Sequence, Union
 
@@ -212,23 +209,23 @@ class SubgroupAUROC(Metric):
         sorted_targets = targets[sorted_indices]
         sorted_subgroups = subgroups[sorted_indices]
 
-        # Compute the false positive rates for the whole dataset
-        negatives_all = (sorted_targets == 0).sum()
-        false_positives_all = torch.cumsum(sorted_targets == 0, dim=0)
-        fpr = false_positives_all / (negatives_all + 1e-7)
-
-        # Compute the true positive rates for the subgroup
+        # Compute the false positive rate for the subgroup
         # Points on the curve where the tpr for the subgroup doesn't change
         # are kept constant
-        positives_subgroup = sorted_targets[sorted_subgroups == subgroup].sum()
-        true_positives_subgroup = torch.where(sorted_subgroups == subgroup, sorted_targets, 0).cumsum(dim=0)
-        tpr = true_positives_subgroup / (positives_subgroup + 1e-7)
+        negatives = (sorted_targets[sorted_subgroups == subgroup] == 0).sum()
+        false_positives = torch.where(sorted_subgroups == subgroup, sorted_targets == 0, 0).cumsum(dim=0)
+        fpr = false_positives / (negatives + 1e-7)
+
+        # Compute the true positive rate for the whole dataset
+        positives = sorted_targets.sum()
+        true_positives = torch.cumsum(sorted_targets, dim=0)
+        tpr = true_positives / (positives + 1e-7)
 
         # Insert thresholds of min_val and max_val to ensure the ROC curve starts at (0, 0) and ends at (1, 1)
         tpr = torch.cat([torch.tensor([0.0]), tpr, torch.tensor([1.0])])
         fpr = torch.cat([torch.tensor([0.0]), fpr, torch.tensor([1.0])])
 
-        # Compute the area under the ROC curve
+        # Compute the area under the ROC curve (equivalent to sklearn.metrics.auc)
         auroc = (((tpr[1:] - tpr[:-1]) / 2 + tpr[:-1]) * (fpr[1:] - fpr[:-1])).sum()
 
         return auroc

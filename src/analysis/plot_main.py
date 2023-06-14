@@ -10,7 +10,7 @@ import numpy as np
 from einops import repeat
 from scipy import stats
 
-from src.analysis.utils import gather_data_seeds
+from src.analysis.utils import gather_data_seeds, gather_data_from_anomaly_scores
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +28,8 @@ def plot_metric(
     """Plots the given metrics as different plots"""
     # Collect data from all runs
     # data = gather_data_bootstrap(experiment_dir)
-    data, attr_key_values = gather_data_seeds(experiment_dir, attr_key, metrics)
+    data, attr_key_values = gather_data_from_anomaly_scores(experiment_dir, attr_key, metrics)
+    # data, attr_key_values = gather_data_seeds(experiment_dir, attr_key, metrics)
 
     # Plot bar plot
     plot_metric_bar(

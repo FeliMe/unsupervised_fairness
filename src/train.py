@@ -358,6 +358,8 @@ def test(config, model, loader, log_dir):
         # os.makedirs(log_dir, exist_ok=True)
         csv_path = os.path.join(log_dir, 'anomaly_scores.csv')
         df = pd.DataFrame({'anomaly_score': anomaly_scores, 'label': labels, 'subgroup_name': subgroup_names})
+        df['male_percent'] = config.male_percent
+        df['old_percent'] = config.old_percent
         df.to_csv(csv_path, index=False)
 
 
