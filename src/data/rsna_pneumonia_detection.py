@@ -58,7 +58,8 @@ def extract_metadata(rsna_dir: str = RSNA_DIR):
         })
 
     metadata = pd.DataFrame.from_dict(metadata)
-    metadata.to_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'), index=True)
+    os.makedirs(os.path.join(THIS_DIR, 'csvs', 'rsna'), exist_ok=True)
+    metadata.to_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'), index=True)
 
     # Write memmap file with images
     memmap_dir = os.path.join(rsna_dir, 'memmap')
@@ -86,7 +87,7 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
     assert anomaly in ['lungOpacity', 'otherAnomaly']
     """Naive train/val/test split."""
     # Load metadata
-    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -145,7 +146,7 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     female_percent = 1 - male_percent
 
     # Load metadata
-    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -234,7 +235,7 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
     young_percent = 1 - old_percent
 
     # Load metadata
-    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]
@@ -337,7 +338,7 @@ def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
     assert anomaly in ['lungOpacity', 'otherAnomaly']
 
     # Load metadata
-    metadata = pd.read_csv(os.path.join(THIS_DIR, 'rsna_metadata.csv'))
+    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
     if anomaly == 'lungOpacity':
         data = metadata[metadata.label == 1]

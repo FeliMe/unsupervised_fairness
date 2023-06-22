@@ -67,13 +67,13 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     mimic_sex = pd.read_csv(os.path.join(mimic_dir, 'patients.csv'))  # From MIMIC-IV, v2.2
     print(f"Total number of images: {len(metadata)}")
 
-    # We only consider frontal view images. (AP)
-    metadata = metadata[metadata['ViewPosition'] == 'AP']
-    print(f"Number of frontal view images: {len(metadata)}")
-
     # Add sex information to metadata
     metadata = metadata.merge(mimic_sex, on='subject_id')
     print(f'Number of images with age and sex metadata: {len(metadata)}')
+
+    # We only consider frontal view images. (AP and PA)
+    metadata = metadata[metadata['ViewPosition'].isin(['AP', 'PA'])]
+    print(f"Number of frontal view images: {len(metadata)}")
 
     # Match metadata and chexpert.
     metadata = metadata.merge(chexpert, on=['subject_id', 'study_id'])
@@ -109,6 +109,21 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
     # memmap_dir = '/vol/aimspace/users/meissen/datasets/MIMIC-CXR/memmap'
     os.makedirs(memmap_dir, exist_ok=True)
 
+    # csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap')
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    os.makedirs(csv_dir, exist_ok=True)
+
+    # Save csv for normal and abnormal images
+    normal = metadata[metadata['No Finding'] == 1.0]
+    print(f"Number of normal images: {len(normal)}")
+    normal['label'] = 0
+    normal.to_csv(os.path.join(csv_dir, 'normal.csv'), index=True)
+
+    abnormal = metadata[metadata['No Finding'].isna()]
+    print(f"Number of abnormal images: {len(abnormal)}")
+    abnormal['label'] = 1
+    abnormal.to_csv(os.path.join(csv_dir, 'abnormal.csv'), index=True)
+
     # Select sets of all pathologies
     pathologies = {}
     for i, pathology in enumerate(CHEXPERT_LABELS):
@@ -123,11 +138,10 @@ def prepare_mimic_cxr(mimic_dir: str = MIMIC_CXR_DIR):
         pathologies[pathology]['label'] = [i] * len(pathologies[pathology])
 
         # Save files
-        os.makedirs(os.path.join(THIS_DIR, 'csvs/mimic-cxr'), exist_ok=True)
-        pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr/', f'{pathology}.csv'), index=True)
+        pathologies[pathology].to_csv(os.path.join(csv_dir, f'{pathology}.csv'), index=True)
 
     # Write memmap files for whole dataset
-    memmap_file = os.path.join(memmap_dir, 'ap_no_support_devices_no_uncertain')
+    memmap_file = os.path.join(memmap_dir, 'ap_pa_no_support_devices_no_uncertain')
     print(f"Writing memmap file '{memmap_file}'...")
     write_memmap(
         metadata['path'].values.tolist(),
@@ -147,15 +161,13 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
 
 def load_mimic_cxr_naive_split():
     """Load MIMIC-CXR dataset with naive split."""
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
-    abnormal = {
-        label: pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
-        for label in CHEXPERT_LABELS if label != 'No Finding'
-    }
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 1000 for val and test)
     normal_val_test = normal.sample(n=2000, random_state=42)
-    normal_train = normal[~normal['path'].isin(normal_val_test['path'])]
+    normal_train = normal[~normal.subject_id.isin(normal_val_test.subject_id)]
     normal_val = normal_val_test[:1000]
     normal_test = normal_val_test[1000:]
 
@@ -193,7 +205,7 @@ def load_mimic_cxr_naive_split():
         os.path.join(
             MIMIC_CXR_DIR,
             'memmap',
-            'ap_no_support_devices_no_uncertain'),
+            'ap_pa_no_support_devices_no_uncertain'),
     )
 
     # Return
@@ -222,11 +234,9 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     female_percent = 1 - male_percent
 
     # Load metadata
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
-    abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
-        for label in CHEXPERT_LABELS if label != 'No Finding'
-    ]).sample(frac=1, random_state=42)
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 500 for val and test)
     normal_male = normal[normal.gender == 'M']
@@ -271,7 +281,7 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
         os.path.join(
             MIMIC_CXR_DIR,
             'memmap',
-            'ap_no_support_devices_no_uncertain'),
+            'ap_pa_no_support_devices_no_uncertain'),
     )
 
     # Return
@@ -301,11 +311,9 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     young_percent = 1 - old_percent
 
     # Load metadata
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', 'No Finding.csv'))
-    abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs/mimic-cxr', f'{label}.csv'))
-        for label in CHEXPERT_LABELS if label != 'No Finding'
-    ]).sample(frac=1, random_state=42)
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Filter ages over 90 years (outliers in MIMIC-IV)
     normal = normal[normal.anchor_age < 91]
@@ -321,8 +329,8 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     # abnormal_young = abnormal[abnormal.anchor_age < t[1]]
     # abnormal_old = abnormal[abnormal.anchor_age >= t[2]]
 
-    max_young = 41  # 31  # 41
-    min_old = 66  # 61  # 66
+    max_young = 31  # 31  # 41
+    min_old = 61  # 61  # 66
     normal_young = normal[normal.anchor_age <= max_young]
     normal_old = normal[normal.anchor_age >= min_old]
     abnormal_young = abnormal[abnormal.anchor_age <= max_young]
@@ -367,7 +375,7 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
         os.path.join(
             MIMIC_CXR_DIR,
             'memmap',
-            'ap_no_support_devices_no_uncertain'),
+            'ap_pa_no_support_devices_no_uncertain'),
     )
 
     # Return
@@ -391,5 +399,5 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
 
 
 if __name__ == '__main__':
-    prepare_mimic_cxr()
+    # prepare_mimic_cxr()
     pass

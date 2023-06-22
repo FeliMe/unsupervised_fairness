@@ -168,7 +168,7 @@ class AUROC(Metric):
 class SubgroupAUROC(Metric):
     """
     Computes the AUROC for each subgroup of the data individually.
-    The TPRs are computed from each subgroup individually, while the FPRs are
+    The FPRs are computed from each subgroup individually, while the TPRs are
     computed from the whole dataset.
     """
     is_differentiable: bool = False

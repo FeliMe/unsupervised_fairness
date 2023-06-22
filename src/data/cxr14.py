@@ -49,10 +49,6 @@ def prepare_cxr14(cxr14_dir: str = CXR14_DIR):
     metadata = pd.read_csv(os.path.join(cxr14_dir, 'Data_Entry_2017.csv'))
     print(f"Total number of images: {len(metadata)}")
 
-    # We only consider frontal view images. (AP)
-    metadata = metadata[metadata['View Position'] == 'AP']
-    print(f"Number of frontal view images: {len(metadata)}")
-
     # Prepend the path to the image filename
     metadata["path"] = metadata.apply(
         lambda row: os.path.join(
@@ -71,6 +67,21 @@ def prepare_cxr14(cxr14_dir: str = CXR14_DIR):
     memmap_dir = os.path.join(cxr14_dir, 'memmap')
     os.makedirs(memmap_dir, exist_ok=True)
 
+    # csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_only')
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_pa')
+    os.makedirs(csv_dir, exist_ok=True)
+
+    # Save csv for normal and abnormal images
+    normal = metadata[metadata['Finding Labels'] == 'No Finding']
+    print(f"Number of normal images: {len(normal)}")
+    normal['label'] = [0] * len(normal)
+    normal.to_csv(os.path.join(csv_dir, 'normal.csv'), index=True)
+
+    abnormal = metadata[metadata['Finding Labels'] != 'No Finding']
+    print(f"Number of abnormal images: {len(abnormal)}")
+    abnormal['label'] = [1] * len(abnormal)
+    abnormal.to_csv(os.path.join(csv_dir, 'abnormal.csv'), index=True)
+
     # Select sets of all pathologies
     pathologies = {}
     for i, pathology in enumerate(CXR14LABELS):
@@ -82,11 +93,10 @@ def prepare_cxr14(cxr14_dir: str = CXR14_DIR):
         pathologies[pathology]['label'] = [i] * len(pathologies[pathology])
 
         # Save files
-        os.makedirs(os.path.join(THIS_DIR, 'csvs/cxr14'), exist_ok=True)
-        pathologies[pathology].to_csv(os.path.join(THIS_DIR, 'csvs/cxr14', f'{pathology}.csv'), index=True)
+        pathologies[pathology].to_csv(os.path.join(csv_dir, f'{pathology}.csv'), index=True)
 
     # Write memmap files for whole dataset
-    memmap_file = os.path.join(memmap_dir, 'cxr14_ap_only')
+    memmap_file = os.path.join(memmap_dir, 'cxr14_ap_pa')
     print(f"Writing memmap file '{memmap_file}'...")
     write_memmap(
         metadata['path'].values.tolist(),
@@ -105,15 +115,13 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
 
 
 def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', 'No Finding.csv'))
-    abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', f'{label}.csv'))
-        for label in CXR14LABELS if label != 'No Finding'
-    ]).sample(frac=1, random_state=42)
+    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 1000 for val and test)
     val_test_normal = normal.sample(n=2000, random_state=42)
-    train = normal[~normal['path'].isin(val_test_normal['path'])]
+    train = normal[~normal['Patient ID'].isin(val_test_normal['Patient ID'])]
     val_normal = val_test_normal[:1000]
     test_normal = val_test_normal[1000:]
 
@@ -130,7 +138,7 @@ def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
         os.path.join(
             cxr14_dir,
             'memmap',
-            'cxr14_ap_only'),
+            'cxr14_ap_pa'),
     )
 
     # Return
@@ -157,11 +165,9 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
     assert 0.0 <= male_percent <= 1.0
     female_percent = 1 - male_percent
 
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', 'No Finding.csv'))
-    abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', f'{label}.csv'))
-        for label in CXR14LABELS if label != 'No Finding'
-    ]).sample(frac=1, random_state=42)
+    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 500 for val and test)
     normal_male = normal[normal['Patient Gender'] == 'M']
@@ -206,7 +212,7 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
         os.path.join(
             cxr14_dir,
             'memmap',
-            'cxr14_ap_only'),
+            'cxr14_ap_pa'),
     )
 
     # Return
@@ -235,11 +241,9 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
     assert 0.0 <= old_percent <= 1.0
     young_percent = 1 - old_percent
 
-    normal = pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', 'No Finding.csv'))
-    abnormal = pd.concat([
-        pd.read_csv(os.path.join(THIS_DIR, 'csvs/cxr14', f'{label}.csv'))
-        for label in CXR14LABELS if label != 'No Finding'
-    ]).sample(frac=1, random_state=42)
+    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Filter ages over 100 years
     normal = normal[normal['Patient Age'] < 100]
@@ -296,7 +300,7 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
         os.path.join(
             cxr14_dir,
             'memmap',
-            'cxr14_ap_only'),
+            'cxr14_ap_pa'),
     )
 
     # Return

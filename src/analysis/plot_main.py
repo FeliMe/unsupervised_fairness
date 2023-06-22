@@ -290,138 +290,461 @@ def plot_metric_box_whisker(
 if __name__ == '__main__':
     """ FAE RSNA sex """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_sex')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="anomaly score",
+    #     title="FAE anomaly scores on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_anomaly_score"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
+    #     # metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95",
+    #     title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_fpr@0.95"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_female_AUROC"],
+    #     # metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_AUROC", "test/lungOpacity_female_AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
+        metrics=["test/lungOpacity_male_DSC@EER", "test/lungOpacity_female_DSC@EER"],
         attr_key='male_percent',
         xlabel="percentage of male subjects in training set",
-        ylabel="anomaly score",
-        title="FAE anomaly scores on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_anomaly_score"
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on RSNA for different proportions of male patients in training",
+        plt_name="fae_rsna_sex_DSC@EER"
     )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
-        # metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95",
-        title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_fpr@0.95"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_female_AUROC"],
-        # metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_AUROC", "test/lungOpacity_female_AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_subgroupAUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_tpr@0.05", "test/lungOpacity_female_tpr@0.05"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="tpr@0.05",
-        title="FAE tpr@0.05fpr on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_tpr@0.05"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95",
-        title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_fpr@0.95_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of male patients in training",
-        plt_name="fae_rsna_sex_AUROC_total"
-    )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_male_tpr@0.05", "test/lungOpacity_female_tpr@0.05"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="tpr@0.05",
+    #     title="FAE tpr@0.05fpr on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_tpr@0.05"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95",
+    #     title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_fpr@0.95_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on RSNA for different proportions of male patients in training",
+    #     plt_name="fae_rsna_sex_AUROC_total"
+    # )
     """ FAE rsna age """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_old_anomaly_score", "test/lungOpacity_young_anomaly_score"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_anomaly_scores"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_old_fpr@0.95", "test/lungOpacity_young_fpr@0.95"],
+    #     # metrics=["test/lungOpacity_old_fpr@0.95", "test/lungOpacity_fpr@0.95", "test/lungOpacity_young_fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_fpr@0.95tpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_old_AUROC", "test/lungOpacity_young_AUROC"],
+    #     # metrics=["test/lungOpacity_old_AUROC", "test/lungOpacity_AUROC", "test/lungOpacity_young_AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_old_subgroupAUROC", "test/lungOpacity_young_subgroupAUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_old_anomaly_score", "test/lungOpacity_young_anomaly_score"],
+        metrics=["test/lungOpacity_old_DSC@EER", "test/lungOpacity_young_DSC@EER"],
         attr_key='old_percent',
         xlabel="percentage of old subjects in training set",
-        ylabel="anomaly scores",
-        title="FAE anomaly scores on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_anomaly_scores"
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on RSNA for different proportions of old patients in training",
+        plt_name="fae_rsna_age_DSC@EER"
     )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_old_tpr@0.05", "test/lungOpacity_young_tpr@0.05"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_tpr@0.05fpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_fpr@0.95tpr_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/lungOpacity_AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on RSNA for different proportions of old patients in training",
+    #     plt_name="fae_rsna_age_AUROC_total"
+    # )
+    """ FAE MIMIC-CXR sex """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_anomaly_score", "test/female_anomaly_score"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_anomaly_scores"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_fpr@0.95", "test/female_fpr@0.95"],
+    #     # metrics=["test/male_fpr@0.95", "test/fpr@0.95", "test/female_fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_fpr@0.95tpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_AUROC", "test/female_AUROC"],
+    #     # metrics=["test/male_AUROC", "test/AUROC", "test/female_AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_old_fpr@0.95", "test/lungOpacity_young_fpr@0.95"],
-        # metrics=["test/lungOpacity_old_fpr@0.95", "test/lungOpacity_fpr@0.95", "test/lungOpacity_young_fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_fpr@0.95tpr"
+        metrics=["test/male_DSC@EER", "test/female_DSC@EER"],
+        attr_key='male_percent',
+        xlabel="percentage of male subjects in training set",
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on MIMIC-CXR for different proportions of male patients in training",
+        plt_name="fae_mimic-cxr_sex_DSC@EER"
     )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_tpr@0.05", "test/female_tpr@0.05"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_tpr@0.05fpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_fpr@0.95tpr_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_AUROC_total"
+    # )
+    """ FAE MIMIC-CXR age """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_anomaly_score", "test/young_anomaly_score"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_anomaly_scores"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_fpr@0.95", "test/young_fpr@0.95"],
+    #     # metrics=["test/old_fpr@0.95", "test/fpr@0.95", "test/young_fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_fpr@0.95tpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_AUROC", "test/young_AUROC"],
+    #     # metrics=["test/old_AUROC", "test/AUROC", "test/young_AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_old_AUROC", "test/lungOpacity_young_AUROC"],
-        # metrics=["test/lungOpacity_old_AUROC", "test/lungOpacity_AUROC", "test/lungOpacity_young_AUROC"],
+        metrics=["test/old_DSC@EER", "test/young_DSC@EER"],
         attr_key='old_percent',
         xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_AUROC"
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on MIMIC-CXR for different proportions of old patients in training",
+        plt_name="fae_mimic-cxr_age_DSC@EER"
     )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_tpr@0.05", "test/young_tpr@0.05"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_tpr@0.05fpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_fpr@0.95tpr_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_AUROC_total"
+    # )
+    """ FAE CXR14 sex """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_anomaly_score", "test/female_anomaly_score"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_anomaly_scores"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_fpr@0.95", "test/female_fpr@0.95"],
+    #     # metrics=["test/male_fpr@0.95", "test/fpr@0.95", "test/female_fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_fpr@0.95tpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_AUROC", "test/female_AUROC"],
+    #     # metrics=["test/male_AUROC", "test/AUROC", "test/female_AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_old_subgroupAUROC", "test/lungOpacity_young_subgroupAUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_subgroupAUROC"
+        metrics=["test/male_DSC@EER", "test/female_DSC@EER"],
+        attr_key='male_percent',
+        xlabel="percentage of male subjects in training set",
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on CXR14 for different proportions of male patients in training",
+        plt_name="fae_cxr14_sex_DSC@EER"
     )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_tpr@0.05", "test/female_tpr@0.05"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_tpr@0.05fpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_fpr@0.95tpr_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_AUROC_total"
+    # )
+    """ FAE CXR14 age """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_age')
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_anomaly_score", "test/young_anomaly_score"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_anomaly_scores"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_fpr@0.95", "test/young_fpr@0.95"],
+    #     # metrics=["test/old_fpr@0.95", "test/fpr@0.95", "test/young_fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_fpr@0.95tpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_AUROC", "test/young_AUROC"],
+    #     # metrics=["test/old_AUROC", "test/AUROC", "test/young_AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_AUROC"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_subgroupAUROC"
+    # )
     plot_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_old_tpr@0.05", "test/lungOpacity_young_tpr@0.05"],
+        metrics=["test/old_DSC@EER", "test/young_DSC@EER"],
         attr_key='old_percent',
         xlabel="percentage of old subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_tpr@0.05fpr"
+        ylabel="DSC@EER",
+        title="FAE DSC@EER on CXR14 for different proportions of old patients in training",
+        plt_name="fae_cxr14_age_DSC@EER"
     )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_fpr@0.95tpr_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_AUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on RSNA for different proportions of old patients in training",
-        plt_name="fae_rsna_age_AUROC_total"
-    )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_tpr@0.05", "test/young_tpr@0.05"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="tpr@0.05fpr",
+    #     title="FAE tpr@0.05fpr on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_tpr@0.05fpr"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_fpr@0.95tpr_total"
+    # )
+    # plot_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_AUROC_total"
+    # )
+
     """ FAE CamCAN """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan_age')
     # plot_metric(
@@ -464,271 +787,3 @@ if __name__ == '__main__':
     #     title="FAE AUROC on BraTS for different proportions of old patients in training",
     #     plt_name="fae_brats_age_AUROC"
     # )
-    """ FAE MIMIC-CXR sex """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_anomaly_score", "test/female_anomaly_score"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="anomaly scores",
-        title="FAE anomaly scores on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_anomaly_scores"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_fpr@0.95", "test/female_fpr@0.95"],
-        # metrics=["test/male_fpr@0.95", "test/fpr@0.95", "test/female_fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_fpr@0.95tpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_AUROC", "test/female_AUROC"],
-        # metrics=["test/male_AUROC", "test/AUROC", "test/female_AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_subgroupAUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_tpr@0.05", "test/female_tpr@0.05"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_tpr@0.05fpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_fpr@0.95tpr_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on MIMIC-CXR for different proportions of male patients in training",
-        plt_name="fae_mimic-cxr_sex_AUROC_total"
-    )
-    """ FAE MIMIC-CXR age """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_anomaly_score", "test/young_anomaly_score"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="anomaly scores",
-        title="FAE anomaly scores on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_anomaly_scores"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_fpr@0.95", "test/young_fpr@0.95"],
-        # metrics=["test/old_fpr@0.95", "test/fpr@0.95", "test/young_fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_fpr@0.95tpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_AUROC", "test/young_AUROC"],
-        # metrics=["test/old_AUROC", "test/AUROC", "test/young_AUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_subgroupAUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_tpr@0.05", "test/young_tpr@0.05"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_tpr@0.05fpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_fpr@0.95tpr_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/AUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on MIMIC-CXR for different proportions of old patients in training",
-        plt_name="fae_mimic-cxr_age_AUROC_total"
-    )
-    """ FAE CXR14 sex """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_anomaly_score", "test/female_anomaly_score"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="anomaly scores",
-        title="FAE anomaly scores on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_anomaly_scores"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_fpr@0.95", "test/female_fpr@0.95"],
-        # metrics=["test/male_fpr@0.95", "test/fpr@0.95", "test/female_fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_fpr@0.95tpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_AUROC", "test/female_AUROC"],
-        # metrics=["test/male_AUROC", "test/AUROC", "test/female_AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_subgroupAUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_tpr@0.05", "test/female_tpr@0.05"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_tpr@0.05fpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/fpr@0.95"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_fpr@0.95tpr_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/AUROC"],
-        attr_key='male_percent',
-        xlabel="percentage of male subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on CXR14 for different proportions of male patients in training",
-        plt_name="fae_cxr14_sex_AUROC_total"
-    )
-    """ FAE CXR14 age """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_age')
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_anomaly_score", "test/young_anomaly_score"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="anomaly scores",
-        title="FAE anomaly scores on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_anomaly_scores"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_fpr@0.95", "test/young_fpr@0.95"],
-        # metrics=["test/old_fpr@0.95", "test/fpr@0.95", "test/young_fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_fpr@0.95tpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_AUROC", "test/young_AUROC"],
-        # metrics=["test/old_AUROC", "test/AUROC", "test/young_AUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_AUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_subgroupAUROC"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_tpr@0.05", "test/young_tpr@0.05"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="tpr@0.05fpr",
-        title="FAE tpr@0.05fpr on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_tpr@0.05fpr"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/fpr@0.95"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="fpr@0.95tpr",
-        title="FAE fpr@0.95tpr on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_fpr@0.95tpr_total"
-    )
-    plot_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/AUROC"],
-        attr_key='old_percent',
-        xlabel="percentage of old subjects in training set",
-        ylabel="AUROC",
-        title="FAE AUROC on CXR14 for different proportions of old patients in training",
-        plt_name="fae_cxr14_age_AUROC_total"
-    )
