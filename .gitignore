@@ -8,3 +8,6 @@ logs
 src/data/**/*.csv
 src/analysis/**/*.csv
 src/analysis/**/*.png
+src/analysis/**/*.pdf
+src/analysis/**/*.svg
+src/analysis/**/*.jpg

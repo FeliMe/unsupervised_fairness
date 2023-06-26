@@ -14,6 +14,7 @@ from src.data.cxr14 import (load_cxr14_age_split,
                             load_cxr14_sex_split)
 from src.data.data_utils import load_dicom_img
 from src.data.mimic_cxr import (load_mimic_cxr_age_split,
+                                load_mimic_cxr_intersectional_age_sex_split,
                                 load_mimic_cxr_naive_split,
                                 load_mimic_cxr_sex_split)
 from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
@@ -180,6 +181,9 @@ def get_dataloaders(dataset: str,
             data, labels, meta, idx_map = load_mimic_cxr_age_split(
                 mimic_cxr_dir=MIMIC_CXR_DIR,
                 old_percent=old_percent)
+        elif protected_attr == 'intersectional_age_sex':
+            data, labels, meta, idx_map = load_mimic_cxr_intersectional_age_sex_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR)
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'cxr14':

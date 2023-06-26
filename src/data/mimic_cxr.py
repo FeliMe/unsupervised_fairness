@@ -39,6 +39,9 @@ SEX_MAPPING = {
     'F': 1
 }
 
+MAX_YOUNG = 31  # 31  # 41
+MIN_OLD = 61  # 61  # 66
+
 
 CHEXPERT_LABELS = [
     'No Finding',
@@ -159,7 +162,7 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
     return image
 
 
-def load_mimic_cxr_naive_split():
+def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
     """Load MIMIC-CXR dataset with naive split."""
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
@@ -203,7 +206,7 @@ def load_mimic_cxr_naive_split():
 
     img_data = read_memmap(
         os.path.join(
-            MIMIC_CXR_DIR,
+            mimic_cxr_dir,
             'memmap',
             'ap_pa_no_support_devices_no_uncertain'),
     )
@@ -279,7 +282,7 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
 
     img_data = read_memmap(
         os.path.join(
-            MIMIC_CXR_DIR,
+            mimic_cxr_dir,
             'memmap',
             'ap_pa_no_support_devices_no_uncertain'),
     )
@@ -329,12 +332,10 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     # abnormal_young = abnormal[abnormal.anchor_age < t[1]]
     # abnormal_old = abnormal[abnormal.anchor_age >= t[2]]
 
-    max_young = 31  # 31  # 41
-    min_old = 61  # 61  # 66
-    normal_young = normal[normal.anchor_age <= max_young]
-    normal_old = normal[normal.anchor_age >= min_old]
-    abnormal_young = abnormal[abnormal.anchor_age <= max_young]
-    abnormal_old = abnormal[abnormal.anchor_age >= min_old]
+    normal_young = normal[normal.anchor_age <= MAX_YOUNG]
+    normal_old = normal[normal.anchor_age >= MIN_OLD]
+    abnormal_young = abnormal[abnormal.anchor_age <= MAX_YOUNG]
+    abnormal_old = abnormal[abnormal.anchor_age >= MIN_OLD]
 
     # Split normal images into train, val, test (use 500 for val and test)
     val_test_normal_old = normal_old.sample(n=1000, random_state=42)
@@ -373,7 +374,7 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
 
     img_data = read_memmap(
         os.path.join(
-            MIMIC_CXR_DIR,
+            mimic_cxr_dir,
             'memmap',
             'ap_pa_no_support_devices_no_uncertain'),
     )
@@ -393,7 +394,130 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     for mode, data in sets.items():
         filenames[mode] = img_data
         labels[mode] = [min(1, label) for label in data.label.values]
-        meta[mode] = np.array([SEX_MAPPING[v] for v in data.gender.values])
+        meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
+        index_mapping[mode] = data.memmap_idx.values
+    return filenames, labels, meta, index_mapping
+
+
+def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+    """Load MIMIC-CXR dataset with intersectional val and test sets."""
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
+
+    # Split normal images into sets
+    normal_male_young = normal[(normal.gender == 'M') & (normal.anchor_age <= MAX_YOUNG)]
+    normal_female_young = normal[(normal.gender == 'F') & (normal.anchor_age <= MAX_YOUNG)]
+    normal_male_old = normal[(normal.gender == 'M') & (normal.anchor_age >= MIN_OLD)]
+    normal_female_old = normal[(normal.gender == 'F') & (normal.anchor_age >= MIN_OLD)]
+
+    val_test_normal_male_young = normal_male_young.sample(n=1000, random_state=42)
+    val_test_normal_female_young = normal_female_young.sample(n=1000, random_state=42)
+    val_test_normal_male_old = normal_male_old.sample(n=1000, random_state=42)
+    val_test_normal_female_old = normal_female_old.sample(n=1000, random_state=42)
+
+    val_normal_male_young = val_test_normal_male_young[:500]
+    val_normal_female_young = val_test_normal_female_young[:500]
+    val_normal_male_old = val_test_normal_male_old[:500]
+    val_normal_female_old = val_test_normal_female_old[:500]
+
+    test_normal_male_young = val_test_normal_male_young[500:]
+    test_normal_female_young = val_test_normal_female_young[500:]
+    test_normal_male_old = val_test_normal_male_old[500:]
+    test_normal_female_old = val_test_normal_female_old[500:]
+
+    # Split abnormal images into sets
+    abnormal_male_young = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age <= MAX_YOUNG)]
+    abnormal_female_young = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age <= MAX_YOUNG)]
+    abnormal_male_old = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age >= MIN_OLD)]
+    abnormal_female_old = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age >= MIN_OLD)]
+
+    val_test_abnormal_male_young = abnormal_male_young.sample(n=1000, random_state=42)
+    val_test_abnormal_female_young = abnormal_female_young.sample(n=1000, random_state=42)
+    val_test_abnormal_male_old = abnormal_male_old.sample(n=1000, random_state=42)
+    val_test_abnormal_female_old = abnormal_female_old.sample(n=1000, random_state=42)
+
+    val_abnormal_male_young = val_test_abnormal_male_young[:500]
+    val_abnormal_female_young = val_test_abnormal_female_young[:500]
+    val_abnormal_male_old = val_test_abnormal_male_old[:500]
+    val_abnormal_female_old = val_test_abnormal_female_old[:500]
+
+    test_abnormal_male_young = val_test_abnormal_male_young[500:]
+    test_abnormal_female_young = val_test_abnormal_female_young[500:]
+    test_abnormal_male_old = val_test_abnormal_male_old[500:]
+    test_abnormal_female_old = val_test_abnormal_female_old[500:]
+
+    # Merge and shuffle normal and abnormal val and test sets
+    val_male_young = pd.concat([val_normal_male_young, val_abnormal_male_young]).sample(frac=1, random_state=42)
+    val_female_young = pd.concat([val_normal_female_young, val_abnormal_female_young]).sample(frac=1, random_state=42)
+    val_male_old = pd.concat([val_normal_male_old, val_abnormal_male_old]).sample(frac=1, random_state=42)
+    val_female_old = pd.concat([val_normal_female_old, val_abnormal_female_old]).sample(frac=1, random_state=42)
+
+    val_male = pd.concat([val_male_young, val_male_old]).sample(frac=1, random_state=42)
+    val_female = pd.concat([val_female_young, val_female_old]).sample(frac=1, random_state=42)
+    val_young = pd.concat([val_male_young, val_female_young]).sample(frac=1, random_state=42)
+    val_old = pd.concat([val_male_old, val_female_old]).sample(frac=1, random_state=42)
+
+    test_male_young = pd.concat([test_normal_male_young, test_abnormal_male_young]).sample(frac=1, random_state=42)
+    test_female_young = pd.concat([test_normal_female_young, test_abnormal_female_young]).sample(frac=1, random_state=42)
+    test_male_old = pd.concat([test_normal_male_old, test_abnormal_male_old]).sample(frac=1, random_state=42)
+    test_female_old = pd.concat([test_normal_female_old, test_abnormal_female_old]).sample(frac=1, random_state=42)
+
+    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=42)
+    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=42)
+    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=42)
+    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=42)
+
+    # Use rest of normal samples for training
+    val_test_normal = pd.concat([
+        val_test_normal_male_young,
+        val_test_normal_female_young,
+        val_test_normal_male_old,
+        val_test_normal_female_old
+    ])
+    train = normal[~normal.subject_id.isin(val_test_normal.subject_id)]
+    print(f"Using {len(train)} normal samples for training.")
+    print(f"Average age of training samples: {train.anchor_age.mean():.2f}, std: {train.anchor_age.std():.2f}")
+    print(f"Fraction of female samples in training: {(train.gender == 'F').mean():.2f}")
+    print(f"Fraction of male samples in training: {(train.gender == 'M').mean():.2f}")
+    print(f"Fraction of young samples in training: {(train.anchor_age <= MAX_YOUNG).mean():.2f}")
+    print(f"Fraction of old samples in training: {(train.anchor_age >= MIN_OLD).mean():.2f}")
+
+    img_data = read_memmap(
+        os.path.join(
+            mimic_cxr_dir,
+            'memmap',
+            'ap_pa_no_support_devices_no_uncertain'),
+    )
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        'val/male_young': val_male_young,
+        'val/female_young': val_female_young,
+        'val/male_old': val_male_old,
+        'val/female_old': val_female_old,
+        'val/male': val_male,
+        'val/female': val_female,
+        'val/young': val_young,
+        'val/old': val_old,
+        'test/male_young': test_male_young,
+        'test/female_young': test_female_young,
+        'test/male_old': test_male_old,
+        'test/female_old': test_female_old,
+        'test/male': test_male,
+        'test/female': test_female,
+        'test/young': test_young,
+        'test/old': test_old,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = img_data
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
         index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 

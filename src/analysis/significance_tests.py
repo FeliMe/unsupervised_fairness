@@ -28,21 +28,21 @@ def test_metric(
 
     """Perform tests"""
     # Two-sided test
-    _, p = stats.wilcoxon(middle_key_vals1, middle_key_vals2)
+    _, p = stats.wilcoxon(middle_key_vals1, middle_key_vals2, mode='exact')
     print(f'Two-sided wilcoxon signed-rank test for {metrics[0]} and {metrics[1]}: p={p}')
     if p < alpha:
         print(f'p < {alpha}: The metrics are significantly different')
     else:
         print(f'p >= {alpha}: No statistical difference')
     # Test if metric[0] is significantly larger than metric[1]
-    _, p = stats.wilcoxon(middle_key_vals1, middle_key_vals2, alternative='greater')
+    _, p = stats.wilcoxon(middle_key_vals1, middle_key_vals2, alternative='greater', mode='exact')
     print(f'One-sided wilcoxon signed-rank test for {metrics[0]} > {metrics[1]}: p={p}')
     if p < alpha:
         print(f'p < {alpha}: {metrics[0]} is significantly larger than {metrics[1]}')
     else:
         print(f'p >= {alpha}: No statistical difference')
     # Test if metric[1] is significantly larger than metric[0]
-    _, p = stats.wilcoxon(middle_key_vals2, middle_key_vals1, alternative='greater')
+    _, p = stats.wilcoxon(middle_key_vals2, middle_key_vals1, alternative='greater', mode='exact')
     print(f'One-sided wilcoxon signed-rank test for {metrics[1]} > {metrics[0]}: p={p}')
     if p < alpha:
         print(f'p < {alpha}: {metrics[1]} is significantly larger than {metrics[0]}')
@@ -61,26 +61,6 @@ if __name__ == '__main__':
         metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
         attr_key='male_percent',
     )
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
-        attr_key='male_percent',
-    )
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
-        attr_key='male_percent',
-    )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_DSC@EER", "test/lungOpacity_female_DSC@EER"],
-    #     attr_key='male_percent',
-    # )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_upperDSC", "test/lungOpacity_female_upperDSC"],
-    #     attr_key='male_percent',
-    # )
     # FAE rsna age
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
     test_metric(
@@ -88,57 +68,35 @@ if __name__ == '__main__':
         metrics=["test/lungOpacity_young_subgroupAUROC", "test/lungOpacity_old_subgroupAUROC"],
         attr_key='old_percent',
     )
+
+    """ FAE CXR14 """
+    # FAE cxr14 sex
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/10_seeds_ap_only/FAE_cxr14_sex')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_fpr@0.95", "test/lungOpacity_old_fpr@0.95"],
-        attr_key='old_percent',
+        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+        attr_key='male_percent',
     )
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/lungOpacity_young_anomaly_score", "test/lungOpacity_old_anomaly_score"],
-        attr_key='old_percent',
-    )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_young_DSC@EER", "test/lungOpacity_old_DSC@EER"],
-    #     attr_key='old_percent',
-    # )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_young_upperDSC", "test/lungOpacity_old_upperDSC"],
-    #     attr_key='old_percent',
-    # )
-    """FAE CamCAN"""
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan_age')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
-        attr_key='old_percent',
-    )
-    """FAE CamCAN"""
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_camcan-brats_age')
+    # FAE cxr14 age
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/10_seeds_ap_only/FAE_cxr14_age')
     test_metric(
         experiment_dir=experiment_dir,
         metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
         attr_key='old_percent',
     )
+
+    """ FAE MIMIC-CXR """
+    # FAE mimic-cxr sex
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/young_fpr@0.95", "test/old_fpr@0.95"],
-        attr_key='old_percent',
+        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+        attr_key='male_percent',
     )
+    # FAE mimic-cxr age
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/young_anomaly_score", "test/old_anomaly_score"],
+        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
         attr_key='old_percent',
     )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/young_DSC@EER", "test/old_DSC@EER"],
-    #     attr_key='old_percent',
-    # )
-    # test_metric(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/young_upperDSC", "test/old_upperDSC"],
-    #     attr_key='old_percent',
-    # )

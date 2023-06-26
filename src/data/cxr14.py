@@ -115,7 +115,7 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
 
 
 def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
-    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
@@ -165,7 +165,7 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
     assert 0.0 <= male_percent <= 1.0
     female_percent = 1 - male_percent
 
-    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
@@ -241,7 +241,7 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
     assert 0.0 <= old_percent <= 1.0
     young_percent = 1 - old_percent
 
-    csv_dir = os.path.join(cxr14_dir, 'csvs', 'cxr14_ap_pa')
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 

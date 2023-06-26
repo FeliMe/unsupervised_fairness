@@ -24,7 +24,7 @@ experiment_dir
 Each results.csv file contains the results of a single run of the experiment.
 """
 import os
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -62,7 +62,11 @@ def gather_data_seeds(experiment_dir: str, attr_key: str, metric_names: List[str
     return results, attr_key_values
 
 
-def gather_data_from_anomaly_scores(experiment_dir: str, attr_key: str, metric_names: List[str]):
+def gather_data_from_anomaly_scores(
+        experiment_dir: str,
+        metric_names: List[str],
+        subgroup_names: List[str],
+        attr_key: Optional[str] = None):
     """Gather the data of multiple random seeds
     Loads the anomaly-scores.csv file instead of the test_results.csv file
     and computes the metrics on the fly
@@ -77,16 +81,19 @@ def gather_data_from_anomaly_scores(experiment_dir: str, attr_key: str, metric_n
         for seed_dir in seed_dirs:
             scores_file = os.path.join(seed_dir, 'anomaly_scores.csv')
             df = pd.read_csv(scores_file)
-            results = compute_metrics_from_scores_file(df)
+            results = compute_metrics_from_scores_file(df, subgroup_names)
             seed_df = pd.DataFrame(results, index=[0])
-            seed_df[attr_key] = df[attr_key].values[0]
+            if attr_key is not None:
+                seed_df[attr_key] = df[attr_key].values[0]
             seed_dfs.append(seed_df)
         df = pd.concat(seed_dfs)
         run_dfs.append(df)
-        attr_key_values.append(df[attr_key].values[0])
+        if attr_key is not None:
+            attr_key_values.append(df[attr_key].values[0])
     # Sort by protected attribute
-    run_dfs = [df for _, df in sorted(zip(attr_key_values, run_dfs))]
-    attr_key_values = np.sort(np.array(attr_key_values))
+    if attr_key is not None:
+        run_dfs = [df for _, df in sorted(zip(attr_key_values, run_dfs))]
+        attr_key_values = np.sort(np.array(attr_key_values))
     # Build results dictionary
     results = {metric: [] for metric in metric_names}
     for df in run_dfs:
@@ -115,9 +122,8 @@ def avg_numeric_in_df(df: pd.DataFrame):
     return df
 
 
-def compute_metrics_from_scores_file(df: pd.DataFrame):
+def compute_metrics_from_scores_file(df: pd.DataFrame, subgroup_names: List[str]):
     """Compute the metrics from the anomaly scores"""
-    subgroup_names = df.subgroup_name.unique().tolist()
     subgroup_mapping = {subgroup_name: i for i, subgroup_name in enumerate(subgroup_names)}
     metrics = build_metrics(subgroup_names)
     for subgroup_name in subgroup_names:
