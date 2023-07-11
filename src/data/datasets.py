@@ -130,6 +130,8 @@ def get_dataloaders(dataset: str,
     """
     Returns dataloaders for the RSNA dataset.
     """
+    print(f'Loading dataset {dataset} with protected attribute {protected_attr}')
+
     # Load filenames and labels
     if dataset == 'rsna':
         load_fn = load_dicom_img

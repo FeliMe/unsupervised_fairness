@@ -89,10 +89,11 @@ def load_rsna_naive_split(rsna_dir: str = RSNA_DIR,
     # Load metadata
     metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
-    if anomaly == 'lungOpacity':
-        data = metadata[metadata.label == 1]
-    else:
-        data = metadata[metadata.label == 2]
+    # if anomaly == 'lungOpacity':
+    #     data = metadata[metadata.label == 1]
+    # else:
+    #     data = metadata[metadata.label == 2]
+    data = metadata[metadata.label.isin([1, 2])]
 
     # Use 8051 normal samples for training
     train = normal_data.sample(n=8051, random_state=42)
@@ -148,10 +149,11 @@ def load_rsna_gender_split(rsna_dir: str = RSNA_DIR,
     # Load metadata
     metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
-    if anomaly == 'lungOpacity':
-        data = metadata[metadata.label == 1]
-    else:
-        data = metadata[metadata.label == 2]
+    # if anomaly == 'lungOpacity':
+    #     data = metadata[metadata.label == 1]
+    # else:
+    #     data = metadata[metadata.label == 2]
+    data = metadata[metadata.label.isin([1, 2])]
 
     normal_male = normal_data[normal_data.PatientSex == 'M']
     normal_female = normal_data[normal_data.PatientSex == 'F']
@@ -237,10 +239,11 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
     # Load metadata
     metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
     normal_data = metadata[metadata.label == 0]
-    if anomaly == 'lungOpacity':
-        data = metadata[metadata.label == 1]
-    else:
-        data = metadata[metadata.label == 2]
+    # if anomaly == 'lungOpacity':
+    #     data = metadata[metadata.label == 1]
+    # else:
+    #     data = metadata[metadata.label == 2]
+    data = metadata[metadata.label.isin([1, 2])]
 
     # Filter ages over 110 years (outliers)
     normal_data = normal_data[normal_data.PatientAge < 110]
@@ -315,120 +318,6 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
         f'val/{anomaly}_young': val_young,
         f'val/{anomaly}_old': val_old,
         f'test/{anomaly}_young': test_young,
-        f'test/{anomaly}_old': test_old,
-    }
-    img_dir = os.path.join(rsna_dir, 'stage_2_train_images')
-    for mode, data in sets.items():
-        filenames[mode] = [f'{img_dir}/{patient_id}.dcm' for patient_id in data.patientId]
-        labels[mode] = [min(1, label) for label in data.label.values]
-        meta[mode] = data['PatientAge'].values
-        index_mapping[mode] = np.arange(len(data))
-    return filenames, labels, meta, index_mapping
-
-
-def load_rsna_age_three_split(rsna_dir: str = RSNA_DIR,
-                              train_age: float = 'avg',
-                              anomaly: str = 'lungOpacity',
-                              for_supervised: bool = False):
-    """Load data with age balanced val and test sets. Training is either young or old.
-    lo = lung opacity
-    oa = other anomaly
-    """
-    assert train_age in ['young', 'avg', 'old']
-    assert anomaly in ['lungOpacity', 'otherAnomaly']
-
-    # Load metadata
-    metadata = pd.read_csv(os.path.join(THIS_DIR, 'csvs', 'rsna', 'rsna_metadata.csv'))
-    normal_data = metadata[metadata.label == 0]
-    if anomaly == 'lungOpacity':
-        data = metadata[metadata.label == 1]
-    else:
-        data = metadata[metadata.label == 2]
-
-    # Filter ages over 110 years (outliers)
-    normal_data = normal_data[normal_data.PatientAge < 110]
-    data = data[data.PatientAge < 110]
-
-    # Split data into bins by age
-    n_bins = 3
-    t = np.histogram(normal_data.PatientAge, bins=n_bins)[1]
-
-    normal_young = normal_data[normal_data.PatientAge < t[1]]
-    normal_avg = normal_data[(normal_data.PatientAge >= t[1]) & (normal_data.PatientAge < t[2])]
-    normal_old = normal_data[normal_data.PatientAge >= t[2]]
-    young = data[data.PatientAge < t[1]]
-    avg = data[(data.PatientAge >= t[1]) & (data.PatientAge < t[2])]
-    old = data[data.PatientAge >= t[2]]
-
-    # Save 100 male and 100 female samples for every label for validation and test
-    # Normal
-    vc_normal_young = normal_young.sample(n=50, random_state=42)
-    vc_normal_avg = normal_avg.sample(n=50, random_state=42)
-    vc_normal_old = normal_old.sample(n=50, random_state=42)
-    # Anomalous
-    vc_young = young.sample(n=100, random_state=42)
-    vc_avg = avg.sample(n=100, random_state=42)
-    vc_old = old.sample(n=100, random_state=42)
-    val_young = vc_young.iloc[:50, :]
-    val_avg = vc_avg.iloc[:50, :]
-    val_old = vc_old.iloc[:50, :]
-    test_young = vc_young.iloc[50:, :]
-    test_avg = vc_avg.iloc[50:, :]
-    test_old = vc_old.iloc[50:, :]
-    # Rest of anomal data
-    rest_young = young[~young.patientId.isin(vc_young.patientId)]
-    rest_avg = avg[~avg.patientId.isin(vc_avg.patientId)]
-    rest_old = old[~old.patientId.isin(vc_old.patientId)]
-
-    # Aggregate validation and test sets and shuffle
-    val_young = pd.concat([vc_normal_young, val_young]).sample(frac=1, random_state=42).reset_index(drop=True)
-    val_avg = pd.concat([vc_normal_avg, val_avg]).sample(frac=1, random_state=42).reset_index(drop=True)
-    val_old = pd.concat([vc_normal_old, val_old]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_young = pd.concat([vc_normal_young, test_young]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_avg = pd.concat([vc_normal_avg, test_avg]).sample(frac=1, random_state=42).reset_index(drop=True)
-    test_old = pd.concat([vc_normal_old, test_old]).sample(frac=1, random_state=42).reset_index(drop=True)
-
-    # Rest for training
-    rest_normal_young = normal_young[~normal_young.patientId.isin(vc_normal_young.patientId)]
-    rest_normal_avg = normal_avg[~normal_avg.patientId.isin(vc_normal_avg.patientId)]
-    rest_normal_old = normal_old[~normal_old.patientId.isin(vc_normal_old.patientId)]
-    n_samples = min(len(rest_normal_young), len(rest_normal_avg), len(rest_normal_old))
-    train_young = rest_normal_young.sample(n=n_samples, random_state=42)
-    train_avg = rest_normal_avg.sample(n=n_samples, random_state=42)
-    train_old = rest_normal_old.sample(n=n_samples, random_state=42)
-
-    # Mix train with anomal data if supervised
-    if for_supervised:
-        n_young = len(train_young)
-        train_young = pd.concat([train_young[:n_young // 2], rest_young.sample(n=n_young // 2, random_state=42)])
-        n_avg = len(train_avg)
-        train_avg = pd.concat([train_avg[:n_avg // 2], rest_avg.sample(n=n_avg // 2, random_state=42)])
-        n_old = len(train_old)
-        train_old = pd.concat([train_old[:n_old // 2], rest_old.sample(n=n_old // 2, random_state=42)])
-
-    if train_age == 'young':
-        train = train_young
-    elif train_age == 'avg':
-        train = train_avg
-    elif train_age == 'old':
-        train = train_old
-    else:
-        raise ValueError("train_age must be 'young', 'avg' or 'old'.")
-
-    print(f"Using {n_samples} {train_age} samples for training.")
-
-    # Return
-    filenames = {}
-    labels = {}
-    meta = {}
-    index_mapping = {}
-    sets = {
-        'train': train,
-        f'val/{anomaly}_young': val_young,
-        f'val/{anomaly}_avg': val_avg,
-        f'val/{anomaly}_old': val_old,
-        f'test/{anomaly}_young': test_young,
-        f'test/{anomaly}_avg': test_avg,
         f'test/{anomaly}_old': test_old,
     }
     img_dir = os.path.join(rsna_dir, 'stage_2_train_images')
