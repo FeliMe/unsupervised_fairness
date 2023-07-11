@@ -85,6 +85,9 @@ def gather_data_from_anomaly_scores(
             seed_df = pd.DataFrame(results, index=[0])
             if attr_key is not None:
                 seed_df[attr_key] = df[attr_key].values[0]
+            # For model size experiment:
+            if 'model_size' in run_dir:
+                seed_df[attr_key] = run_dir[run_dir.find('model_size_') + len('model_size_'):]
             seed_dfs.append(seed_df)
         df = pd.concat(seed_dfs)
         run_dfs.append(df)

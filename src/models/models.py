@@ -24,6 +24,9 @@ def init_model(config):
     model = model.to(config.device)
     compiled_model = torch.compile(model)
 
+    # Log number of trainable parameters
+    print(f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+
     # Init optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr,
                                  weight_decay=config.weight_decay)

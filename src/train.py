@@ -68,6 +68,7 @@ parser.add_argument('--model_type', type=str, default='FAE',
 parser.add_argument('--fae_hidden_dims', type=int, nargs='+',
                     # default=[100, 150, 200, 300],
                     default=[100, 150, 200, 250, 300],
+                    # default=[200, 250, 300, 350, 400],
                     help='Autoencoder hidden dimensions')
 parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
 parser.add_argument('--loss_fn', type=str, default='ssim', help='loss function',
