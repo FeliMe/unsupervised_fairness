@@ -21,14 +21,14 @@ mimic-cxr-2.0.0-chexpert.csv
 """
 import os
 from functools import partial
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
 
-from src import MIMIC_CXR_DIR
+from src import MIMIC_CXR_DIR, SEED
 from src.data.data_utils import read_memmap, write_memmap
 
 
@@ -162,15 +162,17 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
     return image
 
 
-def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
+                               max_train_samples: Optional[int] = None):
     """Load MIMIC-CXR dataset with naive split."""
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 1000 for val and test)
-    normal_val_test = normal.sample(n=2000, random_state=42)
+    normal_val_test = normal.sample(n=2000, random_state=SEED)
     normal_train = normal[~normal.subject_id.isin(normal_val_test.subject_id)]
+    normal_train = normal_train.sample(n=max_train_samples, random_state=SEED) if max_train_samples else normal_train
     normal_val = normal_val_test[:1000]
     normal_test = normal_val_test[1000:]
 
@@ -185,7 +187,7 @@ def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
         n_files = len(abnormal[pathology])
         n_use = min(n_files, 2000) // 2
         # Select anomal samples for val and test
-        abnormal_val_test_pathology = abnormal[pathology].sample(n=2 * n_use, random_state=42)
+        abnormal_val_test_pathology = abnormal[pathology].sample(n=2 * n_use, random_state=SEED)
         abnormal_val_pathology = abnormal_val_test_pathology[:n_use]
         abnormal_test_pathology = abnormal_val_test_pathology[n_use:]
         # Select normal samples for val and test
@@ -198,8 +200,8 @@ def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
         val[pathology]['label'] = np.concatenate([np.ones(n_use), np.zeros(n_use)])
         test[pathology]['label'] = np.concatenate([np.ones(n_use), np.zeros(n_use)])
         # Shuffle
-        val[pathology] = val[pathology].sample(frac=1, random_state=42)
-        test[pathology] = test[pathology].sample(frac=1, random_state=42)
+        val[pathology] = val[pathology].sample(frac=1, random_state=SEED)
+        test[pathology] = test[pathology].sample(frac=1, random_state=SEED)
         # Save labels
         val_labels[pathology] = val[pathology]['label'].values
         test_labels[pathology] = test[pathology]['label'].values
@@ -231,7 +233,8 @@ def load_mimic_cxr_naive_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
 
 
 def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
-                             male_percent: float = 0.5):
+                             male_percent: float = 0.5,
+                             max_train_samples: Optional[int] = None):
     """Load data with sex-balanced val and test sets."""
     assert 0.0 <= male_percent <= 1.0
     female_percent = 1 - male_percent
@@ -244,8 +247,8 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     # Split normal images into train, val, test (use 500 for val and test)
     normal_male = normal[normal.gender == 'M']
     normal_female = normal[normal.gender == 'F']
-    val_test_normal_male = normal_male.sample(n=1000, random_state=42)
-    val_test_normal_female = normal_female.sample(n=1000, random_state=42)
+    val_test_normal_male = normal_male.sample(n=1000, random_state=SEED)
+    val_test_normal_female = normal_female.sample(n=1000, random_state=SEED)
     val_normal_male = val_test_normal_male[:500]
     val_normal_female = val_test_normal_female[:500]
     test_normal_male = val_test_normal_male[500:]
@@ -254,30 +257,34 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     # Split abnormal images into val, test (use maximum 500 for val and test)
     abnormal_male = abnormal[abnormal.gender == 'M']
     abnormal_female = abnormal[abnormal.gender == 'F']
-    val_test_abnormal_male = abnormal_male.sample(n=1000, random_state=42)
-    val_test_abnormal_female = abnormal_female.sample(n=1000, random_state=42)
+    val_test_abnormal_male = abnormal_male.sample(n=1000, random_state=SEED)
+    val_test_abnormal_female = abnormal_female.sample(n=1000, random_state=SEED)
     val_abnormal_male = val_test_abnormal_male.iloc[:500, :]
     val_abnormal_female = val_test_abnormal_female.iloc[:500, :]
     test_abnormal_male = val_test_abnormal_male.iloc[500:, :]
     test_abnormal_female = val_test_abnormal_female.iloc[500:, :]
 
     # Aggregate validation and test sets and shuffle
-    val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=42)
-    val_female = pd.concat([val_normal_female, val_abnormal_female]).sample(frac=1, random_state=42)
-    test_male = pd.concat([test_normal_male, test_abnormal_male]).sample(frac=1, random_state=42)
-    test_female = pd.concat([test_normal_female, test_abnormal_female]).sample(frac=1, random_state=42)
+    val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=SEED)
+    val_female = pd.concat([val_normal_female, val_abnormal_female]).sample(frac=1, random_state=SEED)
+    test_male = pd.concat([test_normal_male, test_abnormal_male]).sample(frac=1, random_state=SEED)
+    test_female = pd.concat([test_normal_female, test_abnormal_female]).sample(frac=1, random_state=SEED)
 
     # Rest for training
     rest_normal_male = normal_male[~normal_male.subject_id.isin(val_test_normal_male.subject_id)]
     rest_normal_female = normal_female[~normal_female.subject_id.isin(val_test_normal_female.subject_id)]
-    n_samples = min(len(rest_normal_male), len(rest_normal_female))
+    if max_train_samples is not None:
+        max_available = min(len(rest_normal_male), len(rest_normal_female)) * 2
+        n_samples = min(max_available, max_train_samples)
+    else:
+        n_samples = min(len(rest_normal_male), len(rest_normal_female))
     n_male = int(n_samples * male_percent)
     n_female = int(n_samples * female_percent)
-    train_male = rest_normal_male.sample(n=n_male, random_state=42)
-    train_female = rest_normal_female.sample(n=n_female, random_state=42)
+    train_male = rest_normal_male.sample(n=n_male, random_state=SEED)
+    train_female = rest_normal_female.sample(n=n_female, random_state=SEED)
 
     # Aggregate training set and shuffle
-    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
+    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=SEED)
     print(f"Using {n_male} male and {n_female} female samples for training.")
 
     img_data = read_memmap(
@@ -308,7 +315,8 @@ def load_mimic_cxr_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
 
 
 def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
-                             old_percent: float = 0.5):
+                             old_percent: float = 0.5,
+                             max_train_samples: Optional[int] = None):
     """Load data with age-balanced val and test sets."""
     assert 0.0 <= old_percent <= 1.0
     young_percent = 1 - old_percent
@@ -338,38 +346,42 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     abnormal_old = abnormal[abnormal.anchor_age >= MIN_OLD]
 
     # Split normal images into train, val, test (use 500 for val and test)
-    val_test_normal_old = normal_old.sample(n=1000, random_state=42)
-    val_test_normal_young = normal_young.sample(n=1000, random_state=42)
+    val_test_normal_old = normal_old.sample(n=1000, random_state=SEED)
+    val_test_normal_young = normal_young.sample(n=1000, random_state=SEED)
     val_normal_old = val_test_normal_old[:500]
     val_normal_young = val_test_normal_young[:500]
     test_normal_old = val_test_normal_old[500:]
     test_normal_young = val_test_normal_young[500:]
 
     # Split abnormal images into val, test (use maximum 500 for val and test)
-    val_test_abnormal_old = abnormal_old.sample(n=1000, random_state=42)
-    val_test_abnormal_young = abnormal_young.sample(n=1000, random_state=42)
+    val_test_abnormal_old = abnormal_old.sample(n=1000, random_state=SEED)
+    val_test_abnormal_young = abnormal_young.sample(n=1000, random_state=SEED)
     val_abnormal_old = val_test_abnormal_old.iloc[:500, :]
     val_abnormal_young = val_test_abnormal_young.iloc[:500, :]
     test_abnormal_old = val_test_abnormal_old.iloc[500:, :]
     test_abnormal_young = val_test_abnormal_young.iloc[500:, :]
 
     # Aggregate validation and test sets and shuffle
-    val_old = pd.concat([val_normal_old, val_abnormal_old]).sample(frac=1, random_state=42)
-    val_young = pd.concat([val_normal_young, val_abnormal_young]).sample(frac=1, random_state=42)
-    test_old = pd.concat([test_normal_old, test_abnormal_old]).sample(frac=1, random_state=42)
-    test_young = pd.concat([test_normal_young, test_abnormal_young]).sample(frac=1, random_state=42)
+    val_old = pd.concat([val_normal_old, val_abnormal_old]).sample(frac=1, random_state=SEED)
+    val_young = pd.concat([val_normal_young, val_abnormal_young]).sample(frac=1, random_state=SEED)
+    test_old = pd.concat([test_normal_old, test_abnormal_old]).sample(frac=1, random_state=SEED)
+    test_young = pd.concat([test_normal_young, test_abnormal_young]).sample(frac=1, random_state=SEED)
 
     # Rest for training
     rest_normal_old = normal_old[~normal_old.subject_id.isin(val_test_normal_old.subject_id)]
     rest_normal_young = normal_young[~normal_young.subject_id.isin(val_test_normal_young.subject_id)]
-    n_samples = min(len(rest_normal_old), len(rest_normal_young))
+    if max_train_samples is not None:
+        max_available = min(len(rest_normal_old), len(rest_normal_young)) * 2
+        n_samples = min(max_available, max_train_samples)
+    else:
+        n_samples = min(len(rest_normal_old), len(rest_normal_young))
     n_old = int(n_samples * old_percent)
     n_young = int(n_samples * young_percent)
-    train_old = rest_normal_old.sample(n=n_old, random_state=42)
-    train_young = rest_normal_young.sample(n=n_young, random_state=42)
+    train_old = rest_normal_old.sample(n=n_old, random_state=SEED)
+    train_young = rest_normal_young.sample(n=n_young, random_state=SEED)
 
     # Aggregate training set and shuffle
-    train = pd.concat([train_old, train_young]).sample(frac=1, random_state=42)
+    train = pd.concat([train_old, train_young]).sample(frac=1, random_state=SEED)
     print(f"Using {n_old} old and {n_young} young samples for training.")
 
     img_data = read_memmap(
@@ -411,10 +423,10 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
     normal_male_old = normal[(normal.gender == 'M') & (normal.anchor_age >= MIN_OLD)]
     normal_female_old = normal[(normal.gender == 'F') & (normal.anchor_age >= MIN_OLD)]
 
-    val_test_normal_male_young = normal_male_young.sample(n=1000, random_state=42)
-    val_test_normal_female_young = normal_female_young.sample(n=1000, random_state=42)
-    val_test_normal_male_old = normal_male_old.sample(n=1000, random_state=42)
-    val_test_normal_female_old = normal_female_old.sample(n=1000, random_state=42)
+    val_test_normal_male_young = normal_male_young.sample(n=1000, random_state=SEED)
+    val_test_normal_female_young = normal_female_young.sample(n=1000, random_state=SEED)
+    val_test_normal_male_old = normal_male_old.sample(n=1000, random_state=SEED)
+    val_test_normal_female_old = normal_female_old.sample(n=1000, random_state=SEED)
 
     val_normal_male_young = val_test_normal_male_young[:500]
     val_normal_female_young = val_test_normal_female_young[:500]
@@ -432,10 +444,10 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
     abnormal_male_old = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age >= MIN_OLD)]
     abnormal_female_old = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age >= MIN_OLD)]
 
-    val_test_abnormal_male_young = abnormal_male_young.sample(n=1000, random_state=42)
-    val_test_abnormal_female_young = abnormal_female_young.sample(n=1000, random_state=42)
-    val_test_abnormal_male_old = abnormal_male_old.sample(n=1000, random_state=42)
-    val_test_abnormal_female_old = abnormal_female_old.sample(n=1000, random_state=42)
+    val_test_abnormal_male_young = abnormal_male_young.sample(n=1000, random_state=SEED)
+    val_test_abnormal_female_young = abnormal_female_young.sample(n=1000, random_state=SEED)
+    val_test_abnormal_male_old = abnormal_male_old.sample(n=1000, random_state=SEED)
+    val_test_abnormal_female_old = abnormal_female_old.sample(n=1000, random_state=SEED)
 
     val_abnormal_male_young = val_test_abnormal_male_young[:500]
     val_abnormal_female_young = val_test_abnormal_female_young[:500]
@@ -448,25 +460,25 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
     test_abnormal_female_old = val_test_abnormal_female_old[500:]
 
     # Merge and shuffle normal and abnormal val and test sets
-    val_male_young = pd.concat([val_normal_male_young, val_abnormal_male_young]).sample(frac=1, random_state=42)
-    val_female_young = pd.concat([val_normal_female_young, val_abnormal_female_young]).sample(frac=1, random_state=42)
-    val_male_old = pd.concat([val_normal_male_old, val_abnormal_male_old]).sample(frac=1, random_state=42)
-    val_female_old = pd.concat([val_normal_female_old, val_abnormal_female_old]).sample(frac=1, random_state=42)
+    val_male_young = pd.concat([val_normal_male_young, val_abnormal_male_young]).sample(frac=1, random_state=SEED)
+    val_female_young = pd.concat([val_normal_female_young, val_abnormal_female_young]).sample(frac=1, random_state=SEED)
+    val_male_old = pd.concat([val_normal_male_old, val_abnormal_male_old]).sample(frac=1, random_state=SEED)
+    val_female_old = pd.concat([val_normal_female_old, val_abnormal_female_old]).sample(frac=1, random_state=SEED)
 
-    val_male = pd.concat([val_male_young, val_male_old]).sample(frac=1, random_state=42)
-    val_female = pd.concat([val_female_young, val_female_old]).sample(frac=1, random_state=42)
-    val_young = pd.concat([val_male_young, val_female_young]).sample(frac=1, random_state=42)
-    val_old = pd.concat([val_male_old, val_female_old]).sample(frac=1, random_state=42)
+    val_male = pd.concat([val_male_young, val_male_old]).sample(frac=1, random_state=SEED)
+    val_female = pd.concat([val_female_young, val_female_old]).sample(frac=1, random_state=SEED)
+    val_young = pd.concat([val_male_young, val_female_young]).sample(frac=1, random_state=SEED)
+    val_old = pd.concat([val_male_old, val_female_old]).sample(frac=1, random_state=SEED)
 
-    test_male_young = pd.concat([test_normal_male_young, test_abnormal_male_young]).sample(frac=1, random_state=42)
-    test_female_young = pd.concat([test_normal_female_young, test_abnormal_female_young]).sample(frac=1, random_state=42)
-    test_male_old = pd.concat([test_normal_male_old, test_abnormal_male_old]).sample(frac=1, random_state=42)
-    test_female_old = pd.concat([test_normal_female_old, test_abnormal_female_old]).sample(frac=1, random_state=42)
+    test_male_young = pd.concat([test_normal_male_young, test_abnormal_male_young]).sample(frac=1, random_state=SEED)
+    test_female_young = pd.concat([test_normal_female_young, test_abnormal_female_young]).sample(frac=1, random_state=SEED)
+    test_male_old = pd.concat([test_normal_male_old, test_abnormal_male_old]).sample(frac=1, random_state=SEED)
+    test_female_old = pd.concat([test_normal_female_old, test_abnormal_female_old]).sample(frac=1, random_state=SEED)
 
-    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=42)
-    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=42)
-    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=42)
-    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=42)
+    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=SEED)
+    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=SEED)
+    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=SEED)
+    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=SEED)
 
     # Use rest of normal samples for training
     val_test_normal = pd.concat([

@@ -126,7 +126,7 @@ def get_dataloaders(dataset: str,
                     num_workers: Optional[int] = 4,
                     male_percent: Optional[float] = 0.5,
                     old_percent: Optional[float] = 0.5,
-                    supervised: Optional[bool] = False) -> Tuple[DataLoader, DataLoader, DataLoader]:
+                    max_train_samples: Optional[int] = None) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Returns dataloaders for the RSNA dataset.
     """
@@ -136,56 +136,14 @@ def get_dataloaders(dataset: str,
     if dataset == 'rsna':
         load_fn = load_dicom_img
         if protected_attr == 'none':
-            data, labels, meta, idx_map = load_rsna_naive_split(RSNA_DIR, for_supervised=supervised)
+            data, labels, meta, idx_map = load_rsna_naive_split(
+                RSNA_DIR, max_train_samples=max_train_samples)
         elif protected_attr == 'age':
-            data, labels, meta, idx_map = load_rsna_age_two_split(RSNA_DIR, old_percent=old_percent, for_supervised=supervised)
+            data, labels, meta, idx_map = load_rsna_age_two_split(
+                RSNA_DIR, old_percent=old_percent, max_train_samples=max_train_samples)
         elif protected_attr == 'sex':
-            data, labels, meta, idx_map = load_rsna_gender_split(RSNA_DIR, male_percent=male_percent, for_supervised=supervised)
-        else:
-            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
-    elif dataset == 'camcan/brats':
-        def load_fn(x):
-            return x
-        if protected_attr == 'none':
-            raise NotImplementedError
-        elif protected_attr == 'age':
-            data, labels, meta, idx_map = load_camcan_brats_age_split(
-                CAMCAN_DIR,
-                BRATS_DIR,
-                sequence='T2',
-                old_percent=old_percent,
-                slice_range=(73, 103))
-        else:
-            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
-    elif dataset == 'camcan':
-        def load_fn(x):
-            return x
-        if protected_attr == 'none':
-            raise NotImplementedError
-        elif protected_attr == 'age':
-            data, labels, meta, idx_map = load_camcan_only_age_split(
-                CAMCAN_DIR,
-                sequence='T2',
-                old_percent=old_percent,
-                slice_range=(73, 103))
-        else:
-            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
-    elif dataset == 'mimic-cxr':
-        def load_fn(x):
-            return torch.tensor(x)
-        if protected_attr == 'none':
-            data, labels, meta, idx_map = load_mimic_cxr_naive_split()
-        elif protected_attr == 'sex':
-            data, labels, meta, idx_map = load_mimic_cxr_sex_split(
-                mimic_cxr_dir=MIMIC_CXR_DIR,
-                male_percent=male_percent)
-        elif protected_attr == 'age':
-            data, labels, meta, idx_map = load_mimic_cxr_age_split(
-                mimic_cxr_dir=MIMIC_CXR_DIR,
-                old_percent=old_percent)
-        elif protected_attr == 'intersectional_age_sex':
-            data, labels, meta, idx_map = load_mimic_cxr_intersectional_age_sex_split(
-                mimic_cxr_dir=MIMIC_CXR_DIR)
+            data, labels, meta, idx_map = load_rsna_gender_split(
+                RSNA_DIR, male_percent=male_percent, max_train_samples=max_train_samples)
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     elif dataset == 'cxr14':
@@ -203,6 +161,27 @@ def get_dataloaders(dataset: str,
                 old_percent=old_percent)
         else:
             raise NotImplementedError
+    elif dataset == 'mimic-cxr':
+        def load_fn(x):
+            return torch.tensor(x)
+        if protected_attr == 'none':
+            data, labels, meta, idx_map = load_mimic_cxr_naive_split(
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'sex':
+            data, labels, meta, idx_map = load_mimic_cxr_sex_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR,
+                male_percent=male_percent,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'age':
+            data, labels, meta, idx_map = load_mimic_cxr_age_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR,
+                old_percent=old_percent,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'intersectional_age_sex':
+            data, labels, meta, idx_map = load_mimic_cxr_intersectional_age_sex_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR)
+        else:
+            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     else:
         raise ValueError(f'Unknown dataset: {dataset}')
 

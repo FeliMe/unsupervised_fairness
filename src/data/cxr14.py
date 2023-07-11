@@ -7,14 +7,14 @@ test_cls: all samples from test_list.txt
 """
 import os
 from functools import partial
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
 
-from src import CXR14_DIR
+from src import CXR14_DIR, SEED
 from src.data.data_utils import read_memmap, write_memmap
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,25 +114,27 @@ def load_and_resize(path: str, target_size: Tuple[int, int]):
     return image
 
 
-def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
+def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR,
+                           max_train_samples: Optional[int] = None):
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'cxr14_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # Split normal images into train, val, test (use 1000 for val and test)
-    val_test_normal = normal.sample(n=2000, random_state=42)
+    val_test_normal = normal.sample(n=2000, random_state=SEED)
     train = normal[~normal['Patient ID'].isin(val_test_normal['Patient ID'])]
+    train = train.sample(n=max_train_samples, random_state=SEED) if max_train_samples else train
     val_normal = val_test_normal[:1000]
     test_normal = val_test_normal[1000:]
 
     # Split abnormal images into val, test (use maximum 1000 for val and test)
-    val_test_abnormal = abnormal.sample(n=2000, random_state=42)
+    val_test_abnormal = abnormal.sample(n=2000, random_state=SEED)
     val_abnormal = val_test_abnormal[:1000]
     test_abnormal = val_test_abnormal[1000:]
 
     # Aggregate validation and test sets and shuffle
-    val = pd.concat([val_normal, val_abnormal]).sample(frac=1, random_state=42)
-    test = pd.concat([test_normal, test_abnormal]).sample(frac=1, random_state=42)
+    val = pd.concat([val_normal, val_abnormal]).sample(frac=1, random_state=SEED)
+    test = pd.concat([test_normal, test_abnormal]).sample(frac=1, random_state=SEED)
 
     memmap_file = read_memmap(
         os.path.join(
@@ -160,7 +162,8 @@ def load_cxr14_naive_split(cxr14_dir: str = CXR14_DIR):
 
 
 def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
-                         male_percent: float = 0.5):
+                         male_percent: float = 0.5,
+                         max_train_samples: Optional[int] = None):
     """Load data with sex-balanced val and test sets."""
     assert 0.0 <= male_percent <= 1.0
     female_percent = 1 - male_percent
@@ -172,8 +175,8 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
     # Split normal images into train, val, test (use 500 for val and test)
     normal_male = normal[normal['Patient Gender'] == 'M']
     normal_female = normal[normal['Patient Gender'] == 'F']
-    val_test_normal_male = normal_male.sample(n=1000, random_state=42)
-    val_test_normal_female = normal_female.sample(n=1000, random_state=42)
+    val_test_normal_male = normal_male.sample(n=1000, random_state=SEED)
+    val_test_normal_female = normal_female.sample(n=1000, random_state=SEED)
     val_normal_male = val_test_normal_male[:500]
     val_normal_female = val_test_normal_female[:500]
     test_normal_male = val_test_normal_male[500:]
@@ -182,30 +185,34 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
     # Split abnormal images into val, test (use maximum 500 for val and test)
     abnormal_male = abnormal[abnormal['Patient Gender'] == 'M']
     abnormal_female = abnormal[abnormal['Patient Gender'] == 'F']
-    val_test_abnormal_male = abnormal_male.sample(n=1000, random_state=42)
-    val_test_abnormal_female = abnormal_female.sample(n=1000, random_state=42)
+    val_test_abnormal_male = abnormal_male.sample(n=1000, random_state=SEED)
+    val_test_abnormal_female = abnormal_female.sample(n=1000, random_state=SEED)
     val_abnormal_male = val_test_abnormal_male[:500]
     val_abnormal_female = val_test_abnormal_female[:500]
     test_abnormal_male = val_test_abnormal_male[500:]
     test_abnormal_female = val_test_abnormal_female[500:]
 
     # Aggregate validation and test sets and shuffle
-    val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=42)
-    val_female = pd.concat([val_normal_female, val_abnormal_female]).sample(frac=1, random_state=42)
-    test_male = pd.concat([test_normal_male, test_abnormal_male]).sample(frac=1, random_state=42)
-    test_female = pd.concat([test_normal_female, test_abnormal_female]).sample(frac=1, random_state=42)
+    val_male = pd.concat([val_normal_male, val_abnormal_male]).sample(frac=1, random_state=SEED)
+    val_female = pd.concat([val_normal_female, val_abnormal_female]).sample(frac=1, random_state=SEED)
+    test_male = pd.concat([test_normal_male, test_abnormal_male]).sample(frac=1, random_state=SEED)
+    test_female = pd.concat([test_normal_female, test_abnormal_female]).sample(frac=1, random_state=SEED)
 
     # Rest for training
     rest_normal_male = normal_male[~normal_male['Patient ID'].isin(val_test_normal_male['Patient ID'])]
     rest_normal_female = normal_female[~normal_female['Patient ID'].isin(val_test_normal_female['Patient ID'])]
-    n_samples = min(len(rest_normal_male), len(rest_normal_female))
+    if max_train_samples is not None:
+        max_available = min(len(rest_normal_male), len(rest_normal_female)) * 2
+        n_samples = min(max_available, max_train_samples)
+    else:
+        n_samples = min(len(rest_normal_male), len(rest_normal_female))
     n_male = int(n_samples * male_percent)
     n_female = int(n_samples * female_percent)
-    train_male = rest_normal_male.sample(n=n_male, random_state=42)
-    train_female = rest_normal_female.sample(n=n_female, random_state=42)
+    train_male = rest_normal_male.sample(n=n_male, random_state=SEED)
+    train_female = rest_normal_female.sample(n=n_female, random_state=SEED)
 
     # Aggregate training set and shuffle
-    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=42)
+    train = pd.concat([train_male, train_female]).sample(frac=1, random_state=SEED)
     print(f"Using {n_male} male and {n_female} female samples for training.")
 
     memmap_file = read_memmap(
@@ -236,7 +243,8 @@ def load_cxr14_sex_split(cxr14_dir: str = CXR14_DIR,
 
 
 def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
-                         old_percent: float = 0.5):
+                         old_percent: float = 0.5,
+                         max_train_samples: Optional[int] = None):
     """Load data with age-balanced val and test sets."""
     assert 0.0 <= old_percent <= 1.0
     young_percent = 1 - old_percent
@@ -262,38 +270,42 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
     abnormal_old = abnormal[abnormal['Patient Age'] >= min_old]
 
     # Split normal images into train, val, test (use 500 for val and test)
-    val_test_normal_old = normal_old.sample(n=1000, random_state=42)
-    val_test_normal_young = normal_young.sample(n=1000, random_state=42)
+    val_test_normal_old = normal_old.sample(n=1000, random_state=SEED)
+    val_test_normal_young = normal_young.sample(n=1000, random_state=SEED)
     val_normal_old = val_test_normal_old[:500]
     val_normal_young = val_test_normal_young[:500]
     test_normal_old = val_test_normal_old[500:]
     test_normal_young = val_test_normal_young[500:]
 
     # Split abnormal images into val, test (use maximum 500 for val and test)
-    val_test_abnormal_old = abnormal_old.sample(n=1000, random_state=42)
-    val_test_abnormal_young = abnormal_young.sample(n=1000, random_state=42)
+    val_test_abnormal_old = abnormal_old.sample(n=1000, random_state=SEED)
+    val_test_abnormal_young = abnormal_young.sample(n=1000, random_state=SEED)
     val_abnormal_old = val_test_abnormal_old[:500]
     val_abnormal_young = val_test_abnormal_young[:500]
     test_abnormal_old = val_test_abnormal_old[500:]
     test_abnormal_young = val_test_abnormal_young[500:]
 
     # Aggregate validation and test sets and shuffle
-    val_old = pd.concat([val_normal_old, val_abnormal_old]).sample(frac=1, random_state=42)
-    val_young = pd.concat([val_normal_young, val_abnormal_young]).sample(frac=1, random_state=42)
-    test_old = pd.concat([test_normal_old, test_abnormal_old]).sample(frac=1, random_state=42)
-    test_young = pd.concat([test_normal_young, test_abnormal_young]).sample(frac=1, random_state=42)
+    val_old = pd.concat([val_normal_old, val_abnormal_old]).sample(frac=1, random_state=SEED)
+    val_young = pd.concat([val_normal_young, val_abnormal_young]).sample(frac=1, random_state=SEED)
+    test_old = pd.concat([test_normal_old, test_abnormal_old]).sample(frac=1, random_state=SEED)
+    test_young = pd.concat([test_normal_young, test_abnormal_young]).sample(frac=1, random_state=SEED)
 
     # Rest for training
     rest_normal_old = normal_old[~normal_old['Patient ID'].isin(val_test_normal_old['Patient ID'])]
     rest_normal_young = normal_young[~normal_young['Patient ID'].isin(val_test_normal_young['Patient ID'])]
-    n_samples = min(len(rest_normal_old), len(rest_normal_young))
+    if max_train_samples is not None:
+        max_available = min(len(rest_normal_old), len(rest_normal_young)) * 2
+        n_samples = min(max_available, max_train_samples)
+    else:
+        n_samples = min(len(rest_normal_old), len(rest_normal_young))
     n_old = int(n_samples * old_percent)
     n_young = int(n_samples * young_percent)
-    train_old = rest_normal_old.sample(n=n_old, random_state=42)
-    train_young = rest_normal_young.sample(n=n_young, random_state=42)
+    train_old = rest_normal_old.sample(n=n_old, random_state=SEED)
+    train_young = rest_normal_young.sample(n=n_young, random_state=SEED)
 
     # Aggregate training set and shuffle
-    train = pd.concat([train_old, train_young]).sample(frac=1, random_state=42)
+    train = pd.concat([train_old, train_young]).sample(frac=1, random_state=SEED)
     print(f"Using {n_old} old and {n_young} young samples for training.")
 
     memmap_file = read_memmap(

@@ -27,17 +27,18 @@ parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
 parser.add_argument('--dataset', type=str, default='mimic-cxr',
-                    choices=['rsna', 'camcan', 'camcan/brats', 'mimic-cxr', 'cxr14'])
+                    choices=['rsna', 'mimic-cxr', 'cxr14'])
 parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex', 'intersectional_age_sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)
 parser.add_argument('--img_size', type=int, default=128, help='Image size')
+parser.add_argument('--max_train_samples', type=int, default=None, help='Max number of training samples')
 parser.add_argument('--num_workers', type=int, default=0,
                     help='Number of workers for dataloader')
 
 # Logging settings
-parser.add_argument('--val_frequency', type=int, default=500,
+parser.add_argument('--val_frequency', type=int, default=1000,
                     help='Validation frequency')
 parser.add_argument('--val_steps', type=int, default=50,
                     help='Steps per validation')
@@ -89,7 +90,6 @@ parser.add_argument('--latent_dim', type=int, default=128,
 
 config = parser.parse_args()
 
-config.supervised = config.model_type == 'ResNet18'
 config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 config.seed = config.initial_seed
 
@@ -114,7 +114,7 @@ train_loader, val_loader, test_loader = get_dataloaders(
     protected_attr=config.protected_attr,
     male_percent=config.male_percent,
     old_percent=config.old_percent,
-    supervised=config.supervised
+    max_train_samples=config.max_train_samples
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')
 
@@ -212,7 +212,6 @@ def train(train_loader, val_loader, config, log_dir):
                 return model
 
         i_epoch += 1
-        print(f'Finished epoch {i_epoch}, ({step} iterations)')
 
 
 """"""""""""""""""""""""""""""""" Validation """""""""""""""""""""""""""""""""
@@ -287,10 +286,10 @@ def validate(config, model, loader, step, log_imgs=False):
     print(log_msg)
 
     # Save checkpoint
-    if not config.debug:
-        ckpt_name = os.path.join(log_dir, 'ckpt_last.pth')
-        print(f'Saving checkpoint to {ckpt_name}')
-        save_checkpoint(ckpt_name, model, step, vars(config))
+    # if not config.debug:
+    #     ckpt_name = os.path.join(log_dir, 'ckpt_last.pth')
+    #     print(f'Saving checkpoint to {ckpt_name}')
+    #     save_checkpoint(ckpt_name, model, step, vars(config))
 
     return results
 
@@ -371,5 +370,6 @@ if __name__ == '__main__':
     for i in range(config.num_seeds):
         config.seed = config.initial_seed + i
         log_dir = os.path.join(config.log_dir, f'seed_{config.seed}')
+        print(f"Starting run {i + 1}/{config.num_seeds} with seed {config.seed}. Logging to {log_dir}...")
         model = train(train_loader, val_loader, config, log_dir)
         test(config, model, test_loader, log_dir)

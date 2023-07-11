@@ -91,6 +91,7 @@ def plot_metric_regression_bar(
     maxi = -math.inf
 
     # Plot bar plots
+    diff = None
     for i, metric in enumerate(metrics):
         mean = data[metric].mean(axis=1)
         std = data[metric].std(axis=1)
@@ -105,6 +106,11 @@ def plot_metric_regression_bar(
             mini = min_val
         if maxi < max_val:
             maxi = max_val
+
+        if diff is None:
+            diff = mean
+        else:
+            print(f"Diff between {metrics[0]} and {metrics[1]} for {attr_key_values}: {mean - diff}")
 
     # Plot regression lines
     left, right = plt.xlim()
@@ -858,14 +864,27 @@ if __name__ == '__main__':
     # )
 
     """ MIMIC-CXR - model size (balanced sex) """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex_size')
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_model_size')
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="model size",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on MIMIC-CXR for different model sizes",
+    #     plt_name="fae_mimic-cxr_model_size"
+    # )
+
+    """ MIMIC-CXR - dataset size (balanced sex) """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_dataset_size')
     plot_metric_regression(
         experiment_dir=experiment_dir,
         metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
         subgroup_names=["test/male", "test/female"],
         attr_key='male_percent',
-        xlabel="model size",
+        xlabel="number of training samples",
         ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on MIMIC-CXR for different model sizes",
-        plt_name="fae_mimic-cxr_model_size"
+        title="FAE subgroupAUROC on MIMIC-CXR for different dataset sizes",
+        plt_name="fae_mimic-cxr_dataset_size"
     )
