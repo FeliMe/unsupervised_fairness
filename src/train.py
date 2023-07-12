@@ -11,7 +11,7 @@ import wandb
 from src.data.datasets import get_dataloaders
 from src.models.models import init_model
 from src.utils.metrics import AvgDictMeter, build_metrics
-from src.utils.utils import seed_everything, save_checkpoint
+from src.utils.utils import seed_everything
 
 """"""""""""""""""""""""""""""""""" Config """""""""""""""""""""""""""""""""""
 
@@ -26,12 +26,13 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='mimic-cxr',
-                    choices=['rsna', 'mimic-cxr', 'cxr14'])
-parser.add_argument('--protected_attr', type=str, default='sex',
-                    choices=['none', 'age', 'sex', 'intersectional_age_sex'])
+parser.add_argument('--dataset', type=str, default='chexpert',
+                    choices=['rsna', 'mimic-cxr', 'cxr14', 'chexpert'])
+parser.add_argument('--protected_attr', type=str, default='race',
+                    choices=['none', 'age', 'sex', 'race', 'intersectional_age_sex'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)
+parser.add_argument('--white_percent', type=float, default=0.5)
 parser.add_argument('--img_size', type=int, default=128, help='Image size')
 parser.add_argument('--max_train_samples', type=int, default=None, help='Max number of training samples')
 parser.add_argument('--num_workers', type=int, default=0,
@@ -114,6 +115,7 @@ train_loader, val_loader, test_loader = get_dataloaders(
     protected_attr=config.protected_attr,
     male_percent=config.male_percent,
     old_percent=config.old_percent,
+    white_percent=config.white_percent,
     max_train_samples=config.max_train_samples
 )
 print(f'Loaded datasets in {time() - t_load_data_start:.2f}s')

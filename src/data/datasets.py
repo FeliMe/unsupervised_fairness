@@ -6,9 +6,11 @@ from torch import Generator, Tensor
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
-from src import BRATS_DIR, CAMCAN_DIR, CXR14_DIR, MIMIC_CXR_DIR, RSNA_DIR
-from src.data.camcan_brats import (load_camcan_brats_age_split,
-                                   load_camcan_only_age_split)
+from src import CHEXPERT_DIR, CXR14_DIR, MIMIC_CXR_DIR, RSNA_DIR
+from src.data.chexpert import (load_chexpert_age_split,
+                               load_chexpert_naive_split,
+                               load_chexpert_race_split,
+                               load_chexpert_sex_split)
 from src.data.cxr14 import (load_cxr14_age_split,
                             load_cxr14_naive_split,
                             load_cxr14_sex_split)
@@ -126,6 +128,7 @@ def get_dataloaders(dataset: str,
                     num_workers: Optional[int] = 4,
                     male_percent: Optional[float] = 0.5,
                     old_percent: Optional[float] = 0.5,
+                    white_percent: Optional[float] = 0.5,
                     max_train_samples: Optional[int] = None) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
     Returns dataloaders for the RSNA dataset.
@@ -180,6 +183,30 @@ def get_dataloaders(dataset: str,
         elif protected_attr == 'intersectional_age_sex':
             data, labels, meta, idx_map = load_mimic_cxr_intersectional_age_sex_split(
                 mimic_cxr_dir=MIMIC_CXR_DIR)
+        else:
+            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
+    elif dataset == 'chexpert':
+        def load_fn(x):
+            return torch.tensor(x)
+        if protected_attr == 'none':
+            data, labels, meta, idx_map = load_chexpert_naive_split(
+                chexpert_dir=CHEXPERT_DIR,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'sex':
+            data, labels, meta, idx_map = load_chexpert_sex_split(
+                chexpert_dir=CHEXPERT_DIR,
+                male_percent=male_percent,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'age':
+            data, labels, meta, idx_map = load_chexpert_age_split(
+                chexpert_dir=CHEXPERT_DIR,
+                old_percent=old_percent,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'race':
+            data, labels, meta, idx_map = load_chexpert_race_split(
+                chexpert_dir=CHEXPERT_DIR,
+                white_percent=white_percent,
+                max_train_samples=max_train_samples)
         else:
             raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
     else:

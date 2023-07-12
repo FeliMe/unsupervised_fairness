@@ -863,6 +863,131 @@ if __name__ == '__main__':
     #     plt_name="fae_mimic-cxr_intersectional_sex_after_old_subgroupAUROC"
     # )
 
+    """ FAE CheXpert sex """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_anomaly_score", "test/female_anomaly_score"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_anomaly_scores"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_fpr@0.95", "test/female_fpr@0.95"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_fpr@0.95tpr"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_AUROC", "test/female_AUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_AUROC"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_subgroupAUROC"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_fpr@0.95tpr_total"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="percentage of male subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_AUROC_total"
+    # )
+    """ FAE CheXpert age """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_age')
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_anomaly_score", "test/young_anomaly_score"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="anomaly scores",
+    #     title="FAE anomaly scores on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_anomaly_scores"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_fpr@0.95", "test/young_fpr@0.95"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_fpr@0.95tpr"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_AUROC", "test/young_AUROC"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_AUROC"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_subgroupAUROC"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/fpr@0.95"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="fpr@0.95tpr",
+    #     title="FAE fpr@0.95tpr on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_fpr@0.95tpr_total"
+    # )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/AUROC"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     attr_key='old_percent',
+    #     xlabel="percentage of old subjects in training set",
+    #     ylabel="AUROC",
+    #     title="FAE AUROC on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_AUROC_total"
+    # )
+
     """ MIMIC-CXR - model size (balanced sex) """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_model_size')
     # plot_metric_regression(
@@ -878,13 +1003,13 @@ if __name__ == '__main__':
 
     """ MIMIC-CXR - dataset size (balanced sex) """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_dataset_size')
-    plot_metric_regression(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        subgroup_names=["test/male", "test/female"],
-        attr_key='male_percent',
-        xlabel="number of training samples",
-        ylabel="subgroupAUROC",
-        title="FAE subgroupAUROC on MIMIC-CXR for different dataset sizes",
-        plt_name="fae_mimic-cxr_dataset_size"
-    )
+    # plot_metric_regression(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     attr_key='male_percent',
+    #     xlabel="number of training samples",
+    #     ylabel="subgroupAUROC",
+    #     title="FAE subgroupAUROC on MIMIC-CXR for different dataset sizes",
+    #     plt_name="fae_mimic-cxr_dataset_size"
+    # )

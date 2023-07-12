@@ -29,6 +29,7 @@ dependencies:
 
   - pip:
     - tensorboard
+    - openpyxl
 
 # variables:
 #   RSNA_DIR: /vol/aimspace/users/meissen/datasets/RSNA
