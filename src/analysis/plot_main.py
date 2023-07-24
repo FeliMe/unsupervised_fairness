@@ -379,150 +379,6 @@ def plot_metric_single(
 
 
 if __name__ == '__main__':
-    """ FAE RSNA sex """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_sex')
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_anomaly_score", "test/lungOpacity_female_anomaly_score"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="anomaly score",
-    #     title="FAE anomaly scores on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_anomaly_score"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_fpr@0.95", "test/lungOpacity_female_fpr@0.95"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="fpr@0.95",
-    #     title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_fpr@0.95"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_AP", "test/lungOpacity_female_AP"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="Average Precision",
-    #     title="FAE AP on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_AP"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_AUROC", "test/lungOpacity_female_AUROC"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="AUROC",
-    #     title="FAE AUROC on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_AUROC"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_male_subgroupAUROC", "test/lungOpacity_female_subgroupAUROC"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_subgroupAUROC"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_fpr@0.95"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="fpr@0.95",
-    #     title="FAE fpr@0.95tpr on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_fpr@0.95_total"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_AUROC"],
-    #     subgroup_names=["test/lungOpacity_male", "test/lungOpacity_female"],
-    #     attr_key='male_percent',
-    #     xlabel="percentage of male subjects in training set",
-    #     ylabel="AUROC",
-    #     title="FAE AUROC on RSNA for different proportions of male patients in training",
-    #     plt_name="fae_rsna_sex_AUROC_total"
-    # )
-    """ FAE rsna age """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_rsna_age')
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_old_anomaly_score", "test/lungOpacity_young_anomaly_score"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="anomaly scores",
-    #     title="FAE anomaly scores on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_anomaly_scores"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_old_fpr@0.95", "test/lungOpacity_young_fpr@0.95"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="fpr@0.95tpr",
-    #     title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_fpr@0.95tpr"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_old_AP", "test/lungOpacity_young_AP"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="Average Precision",
-    #     title="FAE AP on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_AP"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_old_AUROC", "test/lungOpacity_young_AUROC"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="AUROC",
-    #     title="FAE AUROC on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_AUROC"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_old_subgroupAUROC", "test/lungOpacity_young_subgroupAUROC"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_subgroupAUROC"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_fpr@0.95"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="fpr@0.95tpr",
-    #     title="FAE fpr@0.95tpr on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_fpr@0.95tpr_total"
-    # )
-    # plot_metric_regression(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/lungOpacity_AUROC"],
-    #     subgroup_names=["test/lungOpacity_old", "test/lungOpacity_young"],
-    #     attr_key='old_percent',
-    #     xlabel="percentage of old subjects in training set",
-    #     ylabel="AUROC",
-    #     title="FAE AUROC on RSNA for different proportions of old patients in training",
-    #     plt_name="fae_rsna_age_AUROC_total"
-    # )
     """ FAE MIMIC-CXR sex """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
     # plot_metric_regression(
@@ -812,57 +668,6 @@ if __name__ == '__main__':
     #     plt_name="fae_cxr14_age_AUROC_total"
     # )
 
-    """ MIMIC-CXR - Intersectional study (age and sex) """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_intersectional_age_sex')
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-    #     subgroup_names=["test/male", "test/female"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_subgroupAUROC"
-    # )
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
-    #     subgroup_names=["test/old", "test/young"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_age_subgroupAUROC"
-    # )
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/male_old_subgroupAUROC", "test/male_young_subgroupAUROC"],
-    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_age_after_male_subgroupAUROC"
-    # )
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/female_old_subgroupAUROC", "test/female_young_subgroupAUROC"],
-    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_age_after_female_subgroupAUROC"
-    # )
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/male_young_subgroupAUROC", "test/female_young_subgroupAUROC"],
-    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_after_young_subgroupAUROC"
-    # )
-    # plot_metric_single(
-    #     experiment_dir=experiment_dir,
-    #     metrics=["test/male_old_subgroupAUROC", "test/female_old_subgroupAUROC"],
-    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
-    #     ylabel="subgroupAUROC",
-    #     title="",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_after_old_subgroupAUROC"
-    # )
-
     """ FAE CheXpert sex """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
     # plot_metric_regression(
@@ -986,6 +791,99 @@ if __name__ == '__main__':
     #     ylabel="AUROC",
     #     title="FAE AUROC on CheXpert for different proportions of old patients in training",
     #     plt_name="fae_chexpert_age_AUROC_total"
+    # )
+    """ FAE CheXpert race """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_race')
+    plot_metric_regression(
+        experiment_dir=experiment_dir,
+        metrics=["test/white_anomaly_score", "test/black_anomaly_score"],
+        subgroup_names=["test/white", "test/black"],
+        attr_key='white_percent',
+        xlabel="percentage of white subjects in training set",
+        ylabel="anomaly scores",
+        title="FAE anomaly scores on CheXpert for different proportions of white patients in training",
+        plt_name="fae_chexpert_race_anomaly_scores"
+    )
+    plot_metric_regression(
+        experiment_dir=experiment_dir,
+        metrics=["test/white_fpr@0.95", "test/black_fpr@0.95"],
+        subgroup_names=["test/white", "test/black"],
+        attr_key='white_percent',
+        xlabel="percentage of white subjects in training set",
+        ylabel="fpr@0.95tpr",
+        title="FAE fpr@0.95tpr on CheXpert for different proportions of white patients in training",
+        plt_name="fae_chexpert_race_fpr@0.95tpr"
+    )
+    plot_metric_regression(
+        experiment_dir=experiment_dir,
+        metrics=["test/white_AUROC", "test/black_AUROC"],
+        subgroup_names=["test/white", "test/black"],
+        attr_key='white_percent',
+        xlabel="percentage of white subjects in training set",
+        ylabel="AUROC",
+        title="FAE AUROC on CheXpert for different proportions of white patients in training",
+        plt_name="fae_chexpert_race_AUROC"
+    )
+    plot_metric_regression(
+        experiment_dir=experiment_dir,
+        metrics=["test/white_subgroupAUROC", "test/black_subgroupAUROC"],
+        subgroup_names=["test/white", "test/black"],
+        attr_key='white_percent',
+        xlabel="percentage of white subjects in training set",
+        ylabel="subgroupAUROC",
+        title="FAE subgroupAUROC on CheXpert for different proportions of white patients in training",
+        plt_name="fae_chexpert_race_subgroupAUROC"
+    )
+
+    """ MIMIC-CXR - Intersectional study (age and sex) """
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_intersectional_age_sex')
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     subgroup_names=["test/male", "test/female"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_subgroupAUROC"
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
+    #     subgroup_names=["test/old", "test/young"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_age_subgroupAUROC"
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_old_subgroupAUROC", "test/male_young_subgroupAUROC"],
+    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_age_after_male_subgroupAUROC"
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/female_old_subgroupAUROC", "test/female_young_subgroupAUROC"],
+    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_age_after_female_subgroupAUROC"
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_young_subgroupAUROC", "test/female_young_subgroupAUROC"],
+    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_after_young_subgroupAUROC"
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_old_subgroupAUROC", "test/female_old_subgroupAUROC"],
+    #     subgroup_names=["test/male_young", "test/male_old", "test/female_young", "test/female_old"],
+    #     ylabel="subgroupAUROC",
+    #     title="",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_after_old_subgroupAUROC"
     # )
 
     """ MIMIC-CXR - model size (balanced sex) """

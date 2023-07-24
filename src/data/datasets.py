@@ -18,6 +18,7 @@ from src.data.data_utils import load_dicom_img
 from src.data.mimic_cxr import (load_mimic_cxr_age_split,
                                 load_mimic_cxr_intersectional_age_sex_split,
                                 load_mimic_cxr_naive_split,
+                                load_mimic_cxr_race_split,
                                 load_mimic_cxr_sex_split)
 from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
                                                load_rsna_gender_split,
@@ -179,6 +180,11 @@ def get_dataloaders(dataset: str,
             data, labels, meta, idx_map = load_mimic_cxr_age_split(
                 mimic_cxr_dir=MIMIC_CXR_DIR,
                 old_percent=old_percent,
+                max_train_samples=max_train_samples)
+        elif protected_attr == 'race':
+            data, labels, meta, idx_map = load_mimic_cxr_race_split(
+                mimic_cxr_dir=MIMIC_CXR_DIR,
+                white_percent=white_percent,
                 max_train_samples=max_train_samples)
         elif protected_attr == 'intersectional_age_sex':
             data, labels, meta, idx_map = load_mimic_cxr_intersectional_age_sex_split(

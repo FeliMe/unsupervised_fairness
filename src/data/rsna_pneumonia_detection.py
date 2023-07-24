@@ -27,16 +27,6 @@ SEX_MAPPING = {
 }
 
 
-def download_rsna(rsna_dir: str = RSNA_DIR):
-    """Downloads the RSNA dataset."""
-    kaggle.api.authenticate()
-    kaggle.api.dataset_download_files(
-        'kmader/rsna-pneumonia-detection-challenge',
-        path=rsna_dir,
-        unzip=True
-    )
-
-
 def extract_metadata(rsna_dir: str = RSNA_DIR):
     """Extracts metadata (labels, age, gender) from each sample of the RSNA
     dataset."""
@@ -295,6 +285,5 @@ def load_rsna_age_two_split(rsna_dir: str = RSNA_DIR,
 
 
 if __name__ == '__main__':
-    # download_rsna()
-    # extract_metadata()
+    extract_metadata()
     pass

@@ -26,7 +26,7 @@ parser.add_argument('--disable_wandb', action='store_true', help='Debug mode')
 parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
-parser.add_argument('--dataset', type=str, default='chexpert',
+parser.add_argument('--dataset', type=str, default='mimic-cxr',
                     choices=['rsna', 'mimic-cxr', 'cxr14', 'chexpert'])
 parser.add_argument('--protected_attr', type=str, default='race',
                     choices=['none', 'age', 'sex', 'race', 'intersectional_age_sex'])
@@ -362,6 +362,7 @@ def test(config, model, loader, log_dir):
         df = pd.DataFrame({'anomaly_score': anomaly_scores, 'label': labels, 'subgroup_name': subgroup_names})
         df['male_percent'] = config.male_percent
         df['old_percent'] = config.old_percent
+        df['white_percent'] = config.white_percent
         df.to_csv(csv_path, index=False)
 
 

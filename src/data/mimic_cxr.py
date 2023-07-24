@@ -38,6 +38,10 @@ SEX_MAPPING = {
     'M': 0,
     'F': 1
 }
+RACE_MAPPING = {
+    'Black': 0,
+    'White': 1
+}
 
 MAX_YOUNG = 31  # 31  # 41
 MIN_OLD = 61  # 61  # 66
@@ -407,6 +411,124 @@ def load_mimic_cxr_age_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
         filenames[mode] = img_data
         labels[mode] = [min(1, label) for label in data.label.values]
         meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
+        index_mapping[mode] = data.memmap_idx.values
+    return filenames, labels, meta, index_mapping
+
+
+def load_mimic_cxr_race_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
+                              white_percent: float = 0.5,
+                              max_train_samples: Optional[int] = None):
+    """Load data with race-balanced val and test sets."""
+    if white_percent is not None:
+        assert 0.0 <= white_percent <= 1.0
+        black_percent = 1 - white_percent
+
+    # Load metadata
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
+
+    # remove patients who have inconsistent documented race information
+    # credit to github.com/robintibor
+    admissions_df = pd.read_csv(os.path.join(mimic_cxr_dir, 'admissions.csv'))
+    race_df = admissions_df.loc[:, ['subject_id', 'race']].drop_duplicates()
+    v = race_df.subject_id.value_counts()
+    subject_id_more_than_once = v.index[v.gt(1)]
+    ambiguous_race_df = race_df[race_df.subject_id.isin(subject_id_more_than_once)]
+    inconsistent_race = ambiguous_race_df.subject_id.unique()
+    normal = pd.merge(normal, race_df, on='subject_id')
+    normal = normal[~normal.subject_id.isin(inconsistent_race)]
+    abnormal = pd.merge(abnormal, race_df, on='subject_id')
+    abnormal = abnormal[~abnormal.subject_id.isin(inconsistent_race)]
+
+    # Only consider white and black patients
+    mask = (normal.race.str.contains('BLACK', na=False))
+    normal.loc[mask, 'race'] = 'Black'
+    mask = (normal.race == 'WHITE')
+    normal.loc[mask, 'race'] = 'White'
+    mask = (abnormal.race.str.contains('BLACK', na=False))
+    abnormal.loc[mask, 'race'] = 'Black'
+    mask = (abnormal.race == 'WHITE')
+    abnormal.loc[mask, 'race'] = 'White'
+    normal = normal[normal.race.isin(['Black', 'White'])]
+    abnormal = abnormal[abnormal.race.isin(['Black', 'White'])]
+
+    n_v_t = 500
+
+    # Split normal images into train, val, test
+    normal_black = normal[normal.race == 'Black']
+    normal_white = normal[normal.race == 'White']
+    val_test_normal_black = normal_black.sample(n=2 * n_v_t, random_state=SEED)
+    val_test_normal_white = normal_white.sample(n=2 * n_v_t, random_state=SEED)
+    val_normal_black = val_test_normal_black[:n_v_t]
+    val_normal_white = val_test_normal_white[:n_v_t]
+    test_normal_black = val_test_normal_black[n_v_t:]
+    test_normal_white = val_test_normal_white[n_v_t:]
+
+    # Split abnormal images into val, test
+    abnormal_black = abnormal[abnormal.race == 'Black']
+    abnormal_white = abnormal[abnormal.race == 'White']
+    val_test_abnormal_black = abnormal_black.sample(n=2 * n_v_t, random_state=SEED)
+    val_test_abnormal_white = abnormal_white.sample(n=2 * n_v_t, random_state=SEED)
+    val_abnormal_black = val_test_abnormal_black.iloc[:n_v_t, :]
+    val_abnormal_white = val_test_abnormal_white.iloc[:n_v_t, :]
+    test_abnormal_black = val_test_abnormal_black.iloc[n_v_t:, :]
+    test_abnormal_white = val_test_abnormal_white.iloc[n_v_t:, :]
+
+    # Aggregate validation and test sets and shuffle
+    val_black = pd.concat([val_normal_black, val_abnormal_black]).sample(frac=1, random_state=SEED)
+    val_white = pd.concat([val_normal_white, val_abnormal_white]).sample(frac=1, random_state=SEED)
+    test_black = pd.concat([test_normal_black, test_abnormal_black]).sample(frac=1, random_state=SEED)
+    test_white = pd.concat([test_normal_white, test_abnormal_white]).sample(frac=1, random_state=SEED)
+
+    # Rest for training
+    rest_normal_black = normal_black[~normal_black.subject_id.isin(val_test_normal_black.subject_id)]
+    rest_normal_white = normal_white[~normal_white.subject_id.isin(val_test_normal_white.subject_id)]
+    if white_percent is None:
+        n_white = len(rest_normal_white)
+        n_black = len(rest_normal_black)
+        if max_train_samples is not None:
+            frac_white = n_white / (n_white + n_black)
+            n_white = int(max_train_samples * frac_white)
+            n_black = max_train_samples - n_white
+    else:
+        if max_train_samples is not None:
+            max_available = min(len(rest_normal_black), len(rest_normal_white)) * 2
+            n_samples = min(max_available, max_train_samples)
+        else:
+            n_samples = min(len(rest_normal_black), len(rest_normal_white))
+        n_black = int(n_samples * black_percent)
+        n_white = int(n_samples * white_percent)
+    train_black = rest_normal_black.sample(n=n_black, random_state=SEED)
+    train_white = rest_normal_white.sample(n=n_white, random_state=SEED)
+
+    # Aggregate training set and shuffle
+    train = pd.concat([train_black, train_white]).sample(frac=1, random_state=SEED)
+    print(f"Using {n_black} black and {n_white} white samples for training.")
+
+    img_data = read_memmap(
+        os.path.join(
+            mimic_cxr_dir,
+            'memmap',
+            'ap_pa_no_support_devices_no_uncertain'),
+    )
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        'val/black': val_black,
+        'val/white': val_white,
+        'test/black': test_black,
+        'test/white': test_white,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = img_data
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.array([RACE_MAPPING[v] for v in data.race.values])
         index_mapping[mode] = data.memmap_idx.values
     return filenames, labels, meta, index_mapping
 
