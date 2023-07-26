@@ -54,43 +54,49 @@ def test_metric(
 
 if __name__ == '__main__':
     """ FAE CXR14 """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        attr_key='male_percent',
-    )
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_age')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
-        attr_key='old_percent',
-    )
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    # )
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_age')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
+    #     attr_key='old_percent',
+    # )
 
     """ FAE MIMIC-CXR """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    # )
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
+    #     attr_key='old_percent',
+    # )
+    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_race')
     test_metric(
         experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        attr_key='male_percent',
-    )
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
-        attr_key='old_percent',
+        metrics=["test/white_subgroupAUROC", "test/black_subgroupAUROC"],
+        attr_key='white_percent',
     )
 
     """ FAE CheXpert """
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        attr_key='male_percent',
-    )
-    experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_age')
-    test_metric(
-        experiment_dir=experiment_dir,
-        metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
-        attr_key='old_percent',
-    )
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     attr_key='male_percent',
+    # )
+    # experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_age')
+    # test_metric(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
+    #     attr_key='old_percent',
+    # )

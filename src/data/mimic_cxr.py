@@ -539,6 +539,263 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
+    # remove patients who have inconsistent documented race information
+    # credit to github.com/robintibor
+    admissions_df = pd.read_csv(os.path.join(mimic_cxr_dir, 'admissions.csv'))
+    race_df = admissions_df.loc[:, ['subject_id', 'race']].drop_duplicates()
+    v = race_df.subject_id.value_counts()
+    subject_id_more_than_once = v.index[v.gt(1)]
+    ambiguous_race_df = race_df[race_df.subject_id.isin(subject_id_more_than_once)]
+    inconsistent_race = ambiguous_race_df.subject_id.unique()
+    normal = pd.merge(normal, race_df, on='subject_id')
+    normal = normal[~normal.subject_id.isin(inconsistent_race)]
+    abnormal = pd.merge(abnormal, race_df, on='subject_id')
+    abnormal = abnormal[~abnormal.subject_id.isin(inconsistent_race)]
+
+    # Only consider white and black patients
+    mask = (normal.race.str.contains('BLACK', na=False))
+    normal.loc[mask, 'race'] = 'Black'
+    mask = (normal.race == 'WHITE')
+    normal.loc[mask, 'race'] = 'White'
+    mask = (abnormal.race.str.contains('BLACK', na=False))
+    abnormal.loc[mask, 'race'] = 'Black'
+    mask = (abnormal.race == 'WHITE')
+    abnormal.loc[mask, 'race'] = 'White'
+    normal = normal[normal.race.isin(['Black', 'White'])]
+    abnormal = abnormal[abnormal.race.isin(['Black', 'White'])]
+
+    print(f"Available {len(normal)} normal samples for training.")
+    print(f"Average age of training samples: {normal.anchor_age.mean():.2f}, std: {normal.anchor_age.std():.2f}")
+    print(f"Fraction of female samples in training: {(normal.gender == 'F').mean():.2f}")
+    print(f"Fraction of male samples in training: {(normal.gender == 'M').mean():.2f}")
+    print(f"Fraction of young samples in training: {(normal.anchor_age <= MAX_YOUNG).mean():.2f}")
+    print(f"Fraction of old samples in training: {(normal.anchor_age >= MIN_OLD).mean():.2f}")
+    print(f"Fraction of black samples in training: {(normal.race == 'Black').mean():.2f}")
+    print(f"Fraction of white samples in training: {(normal.race == 'White').mean():.2f}")
+
+    # Split normal images into sets
+    normal_male_young_black = normal[(normal.gender == 'M') & (normal.anchor_age <= MAX_YOUNG) & (normal.race == 'Black')]
+    normal_male_young_white = normal[(normal.gender == 'M') & (normal.anchor_age <= MAX_YOUNG) & (normal.race == 'White')]
+    normal_female_young_black = normal[(normal.gender == 'F') & (normal.anchor_age <= MAX_YOUNG) & (normal.race == 'Black')]
+    normal_female_young_white = normal[(normal.gender == 'F') & (normal.anchor_age <= MAX_YOUNG) & (normal.race == 'White')]
+    normal_male_old_black = normal[(normal.gender == 'M') & (normal.anchor_age >= MIN_OLD) & (normal.race == 'Black')]
+    normal_male_old_white = normal[(normal.gender == 'M') & (normal.anchor_age >= MIN_OLD) & (normal.race == 'White')]
+    normal_female_old_black = normal[(normal.gender == 'F') & (normal.anchor_age >= MIN_OLD) & (normal.race == 'Black')]
+    normal_female_old_white = normal[(normal.gender == 'F') & (normal.anchor_age >= MIN_OLD) & (normal.race == 'White')]
+
+    nvt = 125  # 125 for val and 125 for test for each intersectional group (will add up to 500 val and 500 test)
+
+    val_test_normal_male_young_black = normal_male_young_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_male_young_white = normal_male_young_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_female_young_black = normal_female_young_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_female_young_white = normal_female_young_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_male_old_black = normal_male_old_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_male_old_white = normal_male_old_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_female_old_black = normal_female_old_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_normal_female_old_white = normal_female_old_white.sample(n=2 * nvt, random_state=SEED)
+
+    val_normal_male_young_black = val_test_normal_male_young_black[:nvt]
+    val_normal_male_young_white = val_test_normal_male_young_white[:nvt]
+    val_normal_female_young_black = val_test_normal_female_young_black[:nvt]
+    val_normal_female_young_white = val_test_normal_female_young_white[:nvt]
+    val_normal_male_old_black = val_test_normal_male_old_black[:nvt]
+    val_normal_male_old_white = val_test_normal_male_old_white[:nvt]
+    val_normal_female_old_black = val_test_normal_female_old_black[:nvt]
+    val_normal_female_old_white = val_test_normal_female_old_white[:nvt]
+
+    test_normal_male_young_black = val_test_normal_male_young_black[nvt:]
+    test_normal_male_young_white = val_test_normal_male_young_white[nvt:]
+    test_normal_female_young_black = val_test_normal_female_young_black[nvt:]
+    test_normal_female_young_white = val_test_normal_female_young_white[nvt:]
+    test_normal_male_old_black = val_test_normal_male_old_black[nvt:]
+    test_normal_male_old_white = val_test_normal_male_old_white[nvt:]
+    test_normal_female_old_black = val_test_normal_female_old_black[nvt:]
+    test_normal_female_old_white = val_test_normal_female_old_white[nvt:]
+
+    # Split abnormal images into sets
+    abnormal_male_young_black = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age <= MAX_YOUNG) & (abnormal.race == 'Black')]
+    abnormal_male_young_white = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age <= MAX_YOUNG) & (abnormal.race == 'White')]
+    abnormal_female_young_black = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age <= MAX_YOUNG) & (abnormal.race == 'Black')]
+    abnormal_female_young_white = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age <= MAX_YOUNG) & (abnormal.race == 'White')]
+    abnormal_male_old_black = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age >= MIN_OLD) & (abnormal.race == 'Black')]
+    abnormal_male_old_white = abnormal[(abnormal.gender == 'M') & (abnormal.anchor_age >= MIN_OLD) & (abnormal.race == 'White')]
+    abnormal_female_old_black = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age >= MIN_OLD) & (abnormal.race == 'Black')]
+    abnormal_female_old_white = abnormal[(abnormal.gender == 'F') & (abnormal.anchor_age >= MIN_OLD) & (abnormal.race == 'White')]
+
+    val_test_abnormal_male_young_black = abnormal_male_young_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_male_young_white = abnormal_male_young_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_female_young_black = abnormal_female_young_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_female_young_white = abnormal_female_young_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_male_old_black = abnormal_male_old_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_male_old_white = abnormal_male_old_white.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_female_old_black = abnormal_female_old_black.sample(n=2 * nvt, random_state=SEED)
+    val_test_abnormal_female_old_white = abnormal_female_old_white.sample(n=2 * nvt, random_state=SEED)
+
+    val_abnormal_male_young_black = val_test_abnormal_male_young_black[:nvt]
+    val_abnormal_male_young_white = val_test_abnormal_male_young_white[:nvt]
+    val_abnormal_female_young_black = val_test_abnormal_female_young_black[:nvt]
+    val_abnormal_female_young_white = val_test_abnormal_female_young_white[:nvt]
+    val_abnormal_male_old_black = val_test_abnormal_male_old_black[:nvt]
+    val_abnormal_male_old_white = val_test_abnormal_male_old_white[:nvt]
+    val_abnormal_female_old_black = val_test_abnormal_female_old_black[:nvt]
+    val_abnormal_female_old_white = val_test_abnormal_female_old_white[:nvt]
+
+    test_abnormal_male_young_black = val_test_abnormal_male_young_black[nvt:]
+    test_abnormal_male_young_white = val_test_abnormal_male_young_white[nvt:]
+    test_abnormal_female_young_black = val_test_abnormal_female_young_black[nvt:]
+    test_abnormal_female_young_white = val_test_abnormal_female_young_white[nvt:]
+    test_abnormal_male_old_black = val_test_abnormal_male_old_black[nvt:]
+    test_abnormal_male_old_white = val_test_abnormal_male_old_white[nvt:]
+    test_abnormal_female_old_black = val_test_abnormal_female_old_black[nvt:]
+    test_abnormal_female_old_white = val_test_abnormal_female_old_white[nvt:]
+
+    # Merge and shuffle normal and abnormal val and test sets
+    val_male_young_black = pd.concat([val_normal_male_young_black, val_abnormal_male_young_black]).sample(frac=1, random_state=SEED)
+    val_male_young_white = pd.concat([val_normal_male_young_white, val_abnormal_male_young_white]).sample(frac=1, random_state=SEED)
+    val_female_young_black = pd.concat([val_normal_female_young_black, val_abnormal_female_young_black]).sample(frac=1, random_state=SEED)
+    val_female_young_white = pd.concat([val_normal_female_young_white, val_abnormal_female_young_white]).sample(frac=1, random_state=SEED)
+    val_male_old_black = pd.concat([val_normal_male_old_black, val_abnormal_male_old_black]).sample(frac=1, random_state=SEED)
+    val_male_old_white = pd.concat([val_normal_male_old_white, val_abnormal_male_old_white]).sample(frac=1, random_state=SEED)
+    val_female_old_black = pd.concat([val_normal_female_old_black, val_abnormal_female_old_black]).sample(frac=1, random_state=SEED)
+    val_female_old_white = pd.concat([val_normal_female_old_white, val_abnormal_female_old_white]).sample(frac=1, random_state=SEED)
+
+    val_male_young = pd.concat([val_male_young_black, val_male_young_white]).sample(frac=1, random_state=SEED)
+    val_male_old = pd.concat([val_male_old_black, val_male_old_white]).sample(frac=1, random_state=SEED)
+    val_male_white = pd.concat([val_male_old_white, val_male_young_white]).sample(frac=1, random_state=SEED)
+    val_male_black = pd.concat([val_male_old_black, val_male_young_black]).sample(frac=1, random_state=SEED)
+    val_female_young = pd.concat([val_female_young_black, val_female_young_white]).sample(frac=1, random_state=SEED)
+    val_female_old = pd.concat([val_female_old_black, val_female_old_white]).sample(frac=1, random_state=SEED)
+    val_female_white = pd.concat([val_female_old_white, val_female_young_white]).sample(frac=1, random_state=SEED)
+    val_female_black = pd.concat([val_female_old_black, val_female_young_black]).sample(frac=1, random_state=SEED)
+    val_young_white = pd.concat([val_male_young_white, val_female_young_white]).sample(frac=1, random_state=SEED)
+    val_young_black = pd.concat([val_male_young_black, val_female_young_black]).sample(frac=1, random_state=SEED)
+    val_old_white = pd.concat([val_male_old_white, val_female_old_white]).sample(frac=1, random_state=SEED)
+    val_old_black = pd.concat([val_male_old_black, val_female_old_black]).sample(frac=1, random_state=SEED)
+
+    val_male = pd.concat([val_male_young, val_male_old]).sample(frac=1, random_state=SEED)
+    val_female = pd.concat([val_female_young, val_female_old]).sample(frac=1, random_state=SEED)
+    val_young = pd.concat([val_male_young, val_female_young]).sample(frac=1, random_state=SEED)
+    val_old = pd.concat([val_male_old, val_female_old]).sample(frac=1, random_state=SEED)
+    val_white = pd.concat([val_male_white, val_female_white]).sample(frac=1, random_state=SEED)
+    val_black = pd.concat([val_male_black, val_female_black]).sample(frac=1, random_state=SEED)
+
+    test_male_young_black = pd.concat([test_normal_male_young_black, test_abnormal_male_young_black]).sample(frac=1, random_state=SEED)
+    test_male_young_white = pd.concat([test_normal_male_young_white, test_abnormal_male_young_white]).sample(frac=1, random_state=SEED)
+    test_female_young_black = pd.concat([test_normal_female_young_black, test_abnormal_female_young_black]).sample(frac=1, random_state=SEED)
+    test_female_young_white = pd.concat([test_normal_female_young_white, test_abnormal_female_young_white]).sample(frac=1, random_state=SEED)
+    test_male_old_black = pd.concat([test_normal_male_old_black, test_abnormal_male_old_black]).sample(frac=1, random_state=SEED)
+    test_male_old_white = pd.concat([test_normal_male_old_white, test_abnormal_male_old_white]).sample(frac=1, random_state=SEED)
+    test_female_old_black = pd.concat([test_normal_female_old_black, test_abnormal_female_old_black]).sample(frac=1, random_state=SEED)
+    test_female_old_white = pd.concat([test_normal_female_old_white, test_abnormal_female_old_white]).sample(frac=1, random_state=SEED)
+
+    test_male_young = pd.concat([test_male_young_black, test_male_young_white]).sample(frac=1, random_state=SEED)
+    test_male_old = pd.concat([test_male_old_black, test_male_old_white]).sample(frac=1, random_state=SEED)
+    test_male_white = pd.concat([test_male_old_white, test_male_young_white]).sample(frac=1, random_state=SEED)
+    test_male_black = pd.concat([test_male_old_black, test_male_young_black]).sample(frac=1, random_state=SEED)
+    test_female_young = pd.concat([test_female_young_black, test_female_young_white]).sample(frac=1, random_state=SEED)
+    test_female_old = pd.concat([test_female_old_black, test_female_old_white]).sample(frac=1, random_state=SEED)
+    test_female_white = pd.concat([test_female_old_white, test_female_young_white]).sample(frac=1, random_state=SEED)
+    test_female_black = pd.concat([test_female_old_black, test_female_young_black]).sample(frac=1, random_state=SEED)
+    test_young_white = pd.concat([test_male_young_white, test_female_young_white]).sample(frac=1, random_state=SEED)
+    test_young_black = pd.concat([test_male_young_black, test_female_young_black]).sample(frac=1, random_state=SEED)
+    test_old_white = pd.concat([test_male_old_white, test_female_old_white]).sample(frac=1, random_state=SEED)
+    test_old_black = pd.concat([test_male_old_black, test_female_old_black]).sample(frac=1, random_state=SEED)
+
+    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=SEED)
+    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=SEED)
+    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=SEED)
+    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=SEED)
+    test_white = pd.concat([test_male_white, test_female_white]).sample(frac=1, random_state=SEED)
+    test_black = pd.concat([test_male_black, test_female_black]).sample(frac=1, random_state=SEED)
+
+    # Use rest of normal samples for training
+    val_test_normal = pd.concat([
+        val_test_normal_male_young_black,
+        val_test_normal_male_young_white,
+        val_test_normal_female_young_black,
+        val_test_normal_female_young_white,
+        val_test_normal_male_old_black,
+        val_test_normal_male_old_white,
+        val_test_normal_female_old_black,
+        val_test_normal_female_old_white
+    ])
+    train = normal[~normal.subject_id.isin(val_test_normal.subject_id)]
+    print(f"\nUsing {len(train)} normal samples for training.")
+    print(f"Average age of training samples: {train.anchor_age.mean():.2f}, std: {train.anchor_age.std():.2f}")
+    print(f"Fraction of female samples in training: {(train.gender == 'F').mean():.2f}")
+    print(f"Fraction of male samples in training: {(train.gender == 'M').mean():.2f}")
+    print(f"Fraction of young samples in training: {(train.anchor_age <= MAX_YOUNG).mean():.2f}")
+    print(f"Fraction of old samples in training: {(train.anchor_age >= MIN_OLD).mean():.2f}")
+    print(f"Fraction of black samples in training: {(train.race == 'Black').mean():.2f}")
+    print(f"Fraction of white samples in training: {(train.race == 'White').mean():.2f}")
+
+    img_data = read_memmap(
+        os.path.join(
+            mimic_cxr_dir,
+            'memmap',
+            'ap_pa_no_support_devices_no_uncertain'),
+    )
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        # val
+        'val/male_young': val_male_young,
+        'val/male_old': val_male_old,
+        'val/male_white': val_male_white,
+        'val/male_black': val_male_black,
+        'val/female_young': val_female_young,
+        'val/female_old': val_female_old,
+        'val/female_white': val_female_white,
+        'val/female_black': val_female_black,
+        'val/young_white': val_young_white,
+        'val/young_black': val_young_black,
+        'val/old_white': val_old_white,
+        'val/old_black': val_old_black,
+        'val/male': val_male,
+        'val/female': val_female,
+        'val/young': val_young,
+        'val/old': val_old,
+        'val/white': val_white,
+        'val/black': val_black,
+        # test
+        'test/male_young': test_male_young,
+        'test/male_old': test_male_old,
+        'test/male_white': test_male_white,
+        'test/male_black': test_male_black,
+        'test/female_young': test_female_young,
+        'test/female_old': test_female_old,
+        'test/female_white': test_female_white,
+        'test/female_black': test_female_black,
+        'test/young_white': test_young_white,
+        'test/young_black': test_young_black,
+        'test/old_white': test_old_white,
+        'test/old_black': test_old_black,
+        'test/male': test_male,
+        'test/female': test_female,
+        'test/young': test_young,
+        'test/old': test_old,
+        'test/white': test_white,
+        'test/black': test_black,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = img_data
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
+        index_mapping[mode] = data.memmap_idx.values
+    return filenames, labels, meta, index_mapping
+
+
+def load_mimic_cxr_intersectional_age_sex_split_old(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+    """Load MIMIC-CXR dataset with intersectional val and test sets."""
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
+
     # Split normal images into sets
     normal_male_young = normal[(normal.gender == 'M') & (normal.anchor_age <= MAX_YOUNG)]
     normal_female_young = normal[(normal.gender == 'F') & (normal.anchor_age <= MAX_YOUNG)]
