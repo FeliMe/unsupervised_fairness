@@ -28,8 +28,8 @@ parser.add_argument('--experiment_name', type=str, default='')
 # Data settings
 parser.add_argument('--dataset', type=str, default='mimic-cxr',
                     choices=['rsna', 'mimic-cxr', 'cxr14', 'chexpert'])
-parser.add_argument('--protected_attr', type=str, default='race',
-                    choices=['none', 'age', 'sex', 'race', 'intersectional_age_sex'])
+parser.add_argument('--protected_attr', type=str, default='intersectional_age_sex_race',
+                    choices=['none', 'age', 'sex', 'race', 'intersectional_age_sex_race'])
 parser.add_argument('--male_percent', type=float, default=0.5)
 parser.add_argument('--old_percent', type=float, default=0.5)
 parser.add_argument('--white_percent', type=float, default=0.5)
@@ -65,12 +65,11 @@ parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
 # Model settings
 parser.add_argument('--model_type', type=str, default='FAE',
-                    choices=['FAE', 'RD', 'DeepSVDD', 'ResNet18', 'UncertaintyAE'])
+                    choices=['FAE', 'RD'])
 # FAE settings
 parser.add_argument('--fae_hidden_dims', type=int, nargs='+',
                     # default=[100, 150, 200, 300],
                     default=[100, 150, 200, 250, 300],
-                    # default=[200, 250, 300, 350, 400],
                     help='Autoencoder hidden dimensions')
 parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
 parser.add_argument('--loss_fn', type=str, default='ssim', help='loss function',
@@ -79,15 +78,6 @@ parser.add_argument('--extractor_cnn_layers', type=str, nargs='+',
                     default=['layer0', 'layer1', 'layer2'])
 parser.add_argument('--keep_feature_prop', type=float, default=1.0,
                     help='Proportion of ResNet features to keep')
-# DeepSVDD settings
-parser.add_argument('--repr_dim', type=int, default=256,
-                    help='Dimensionality of the hypersphere c')
-# UncertaintyAE settings
-parser.add_argument('--uae_hidden_dims', type=int, nargs='+',
-                    default=[32, 64, 128, 256],
-                    help='Autoencoder hidden dimensions')
-parser.add_argument('--latent_dim', type=int, default=128,
-                    help='Size of the latent space')
 
 config = parser.parse_args()
 
@@ -350,20 +340,24 @@ def test(config, model, loader, log_dir):
     # Save test results to csv
     if not config.debug:
         csv_path = os.path.join(log_dir, 'test_results.csv')
-        df = pd.DataFrame({k: v.item() for k, v in metrics_c.items()}, index=[0])
+        results_df = pd.DataFrame({k: v.item() for k, v in metrics_c.items()}, index=[0])
         for k, v in vars(config).items():
-            df[k] = pd.Series([v])
-        df.to_csv(csv_path, index=False)
+            results_df[k] = pd.Series([v])
+        results_df.to_csv(csv_path, index=False)
 
     # Save anomaly scores and labels to csv
     if not config.debug:
         # os.makedirs(log_dir, exist_ok=True)
+        anomaly_score_df = pd.DataFrame({
+            'anomaly_score': anomaly_scores,
+            'label': labels,
+            'subgroup_name': subgroup_names
+        })
         csv_path = os.path.join(log_dir, 'anomaly_scores.csv')
-        df = pd.DataFrame({'anomaly_score': anomaly_scores, 'label': labels, 'subgroup_name': subgroup_names})
-        df['male_percent'] = config.male_percent
-        df['old_percent'] = config.old_percent
-        df['white_percent'] = config.white_percent
-        df.to_csv(csv_path, index=False)
+        anomaly_score_df['male_percent'] = config.male_percent
+        anomaly_score_df['old_percent'] = config.old_percent
+        anomaly_score_df['white_percent'] = config.white_percent
+        anomaly_score_df.to_csv(csv_path, index=False)
 
 
 """"""""""""""""""""""""""""""""" Main """""""""""""""""""""""""""""""""

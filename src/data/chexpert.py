@@ -132,7 +132,9 @@ def prepare_chexpert(chexpert_dir: str = CHEXPERT_DIR):
     # Write memmap files for whole dataset
     memmap_dir = os.path.join(chexpert_dir, 'memmap')
     os.makedirs(memmap_dir, exist_ok=True)
-    memmap_file = os.path.join(memmap_dir, 'frontal_no_support_devices_no_uncertain')
+    memmap_file = os.path.join(memmap_dir,
+                               'frontal_no_support_devices_no_uncertain',
+                               'data')
     print(f"Writing memmap file '{memmap_file}'...")
     write_memmap(
         metadata.Path.values.tolist(),
@@ -271,7 +273,8 @@ def load_chexpert_sex_split(chexpert_dir: str = CHEXPERT_DIR,
         os.path.join(
             chexpert_dir,
             'memmap',
-            'frontal_no_support_devices_no_uncertain'),
+            'frontal_no_support_devices_no_uncertain',
+            'data'),
     )
 
     # Return
@@ -364,7 +367,8 @@ def load_chexpert_age_split(chexpert_dir: str = CHEXPERT_DIR,
         os.path.join(
             chexpert_dir,
             'memmap',
-            'frontal_no_support_devices_no_uncertain'),
+            'frontal_no_support_devices_no_uncertain',
+            'data'),
     )
 
     # Return
@@ -470,7 +474,8 @@ def load_chexpert_race_split(chexpert_dir: str = CHEXPERT_DIR,
         os.path.join(
             chexpert_dir,
             'memmap',
-            'frontal_no_support_devices_no_uncertain'),
+            'frontal_no_support_devices_no_uncertain',
+            'data'),
     )
 
     # Return

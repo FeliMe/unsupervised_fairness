@@ -533,7 +533,7 @@ def load_mimic_cxr_race_split(mimic_cxr_dir: str = MIMIC_CXR_DIR,
     return filenames, labels, meta, index_mapping
 
 
-def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+def load_mimic_cxr_intersectional_age_sex_race_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
     """Load MIMIC-CXR dataset with intersectional val and test sets."""
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
@@ -790,7 +790,7 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
     return filenames, labels, meta, index_mapping
 
 
-def load_mimic_cxr_intersectional_age_sex_split_old(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_DIR):
     """Load MIMIC-CXR dataset with intersectional val and test sets."""
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))

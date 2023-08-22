@@ -24,6 +24,9 @@ SEX_MAPPING = {
     'F': 1
 }
 
+MAX_YOUNG = 31  # 31  # 41
+MIN_OLD = 61  # 61  # 66
+
 CXR14LABELS = [  # All data
     'No Finding',  # 60361
     'Atelectasis',  # 11559
@@ -262,12 +265,10 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
     # t = np.histogram(normal['Patient Age'], bins=n_bins)[1]
     # print(f"Splitting data into {n_bins - 1} bins by age: {t}")
 
-    max_young = 31  # 31  # 41
-    min_old = 61  # 61  # 66
-    normal_young = normal[normal['Patient Age'] <= max_young]
-    normal_old = normal[normal['Patient Age'] >= min_old]
-    abnormal_young = abnormal[abnormal['Patient Age'] <= max_young]
-    abnormal_old = abnormal[abnormal['Patient Age'] >= min_old]
+    normal_young = normal[normal['Patient Age'] <= MAX_YOUNG]
+    normal_old = normal[normal['Patient Age'] >= MIN_OLD]
+    abnormal_young = abnormal[abnormal['Patient Age'] <= MAX_YOUNG]
+    abnormal_old = abnormal[abnormal['Patient Age'] >= MIN_OLD]
 
     # Split normal images into train, val, test (use 500 for val and test)
     val_test_normal_old = normal_old.sample(n=1000, random_state=SEED)
