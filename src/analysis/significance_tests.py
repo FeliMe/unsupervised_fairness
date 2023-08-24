@@ -17,11 +17,9 @@ def test_metric(
         metrics: Tuple[str, str]):
     """Perform different statistical tests on data"""
     data, attr_key_values = gather_data_seeds(experiment_dir, attr_key, metrics)
-    # test_metric_balanced(data, metrics)
-    # test_metric_linearity_ks(data, metrics, attr_key_values)
-    # test_metric_linearity_anova(data, metrics, attr_key_values)
-    compute_mae(data, metrics)
+    test_metric_balanced(data, metrics)
     check_pearsson_correlation_coefficient(data, metrics, attr_key_values)
+    compute_mae(data, metrics)
 
 
 def test_metric_balanced(
@@ -60,59 +58,6 @@ def test_metric_balanced(
     print("")
 
 
-def test_metric_linearity_ks(
-        data: Dict[str, np.ndarray],
-        metrics: Tuple[str, str],
-        attr_key_values: np.ndarray,
-        alpha: float = 0.01):
-    """Perform a Kolmogorov-Smirnov test to check if the metric is linearly
-    correlated with the protected attribute"""
-
-    for metric in metrics:
-        vals = data[metric]  # Shape: (num_attr_key_values, num_seeds)
-        # Fit a linear regression model
-        x = attr_key_values[:, np.newaxis].repeat(vals.shape[1], axis=1).flatten()
-        y = vals.flatten()
-        coeffs = np.polyfit(x, y, deg=1)
-        y_hat = np.polyval(coeffs, x)
-        # Compute the KS statistic
-        _, p = stats.ks_2samp(y, y_hat)
-        print(f"KS test for {metric}: p={p}")
-        if p < alpha:
-            print(f'p < {alpha}: {metric} is not linearly correlated with the protected attribute')
-        else:
-            print(f'p >= {alpha}: {metric} is linearly correlated with the protected attribute')
-
-    print("")
-
-
-def test_metric_linearity_anova(
-        data: Dict[str, np.ndarray],
-        metrics: Tuple[str, str],
-        attr_key_values: np.ndarray,
-        alpha: float = 0.01):
-    """Perform a ANOVA test to check if the metric can be better explained by
-    a linear model than a non-linear model"""
-    for metric in metrics:
-        vals = data[metric]  # Shape: (num_attr_key_values, num_seeds)
-        # Fit a linear and a non-linear regression model
-        x = attr_key_values[:, np.newaxis].repeat(vals.shape[1], axis=1).flatten()
-        y = vals.flatten()
-        coeffs_linear = np.polyfit(x, y, deg=1)
-        y_hat_linear = np.polyval(coeffs_linear, x)
-        coeffs_nonlinear = np.polyfit(x, y, deg=2)
-        y_hat_nonlinear = np.polyval(coeffs_nonlinear, x)
-        # Compute the ANOVA statistic
-        _, p = stats.f_oneway(y, y_hat_linear, y_hat_nonlinear)
-        print(f"ANOVA test for {metric}: p={p}")
-        if p < alpha:
-            print(f'p < {alpha}: {metric} can be better explained by a non-linear model')
-        else:
-            print(f'p >= {alpha}: {metric} can not be better explained by a non-linear model')
-
-    print("")
-
-
 def compute_mae(data: Dict[str, np.ndarray],
                 metrics: Tuple[str, str]):
     """Compute the mean absolute error between the metrics and a linear model"""
@@ -138,7 +83,7 @@ def check_pearsson_correlation_coefficient(data: Dict[str, np.ndarray],
 
 
 if __name__ == '__main__':
-    """ FAE CXR14 """
+    """ CXR14 """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
     print("CXR14 sex")
     test_metric(
@@ -154,7 +99,7 @@ if __name__ == '__main__':
         attr_key='old_percent',
     )
 
-    """ FAE MIMIC-CXR """
+    """ MIMIC-CXR """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
     print("MIMIC-CXR sex")
     test_metric(
@@ -177,7 +122,7 @@ if __name__ == '__main__':
         attr_key='white_percent',
     )
 
-    """ FAE CheXpert """
+    """ CheXpert """
     print("CheXpert sex")
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
     test_metric(

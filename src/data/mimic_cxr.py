@@ -538,194 +538,6 @@ def load_mimic_cxr_intersectional_age_sex_race_split(mimic_cxr_dir: str = MIMIC_
     csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
     normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
     abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
-    data = pd.concat([normal, abnormal])
-
-    # remove patients who have inconsistent documented race information
-    # credit to github.com/robintibor
-    admissions_df = pd.read_csv(os.path.join(mimic_cxr_dir, 'admissions.csv'))
-    race_df = admissions_df.loc[:, ['subject_id', 'race']].drop_duplicates()
-    v = race_df.subject_id.value_counts()
-    subject_id_more_than_once = v.index[v.gt(1)]
-    ambiguous_race_df = race_df[race_df.subject_id.isin(subject_id_more_than_once)]
-    inconsistent_race = ambiguous_race_df.subject_id.unique()
-    data = pd.merge(data, race_df, on='subject_id')
-    data = data[~data.subject_id.isin(inconsistent_race)]
-
-    # Only consider white and black patients
-    mask = (data.race.str.contains('BLACK', na=False))
-    data.loc[mask, 'race'] = 'Black'
-    mask = (data.race == 'WHITE')
-    data.loc[mask, 'race'] = 'White'
-    data = data[data.race.isin(['Black', 'White'])]
-
-    # Create test sets for the following subgroups with n = 250 samples:
-    # female young black
-    # female young white
-    # female old black
-    # female old white
-    # male young black
-    # male young white
-    # male old black
-    # male old white
-    n_test = 250
-    test_female_young_black = data[(data.gender == 'F') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
-    test_female_young_white = data[(data.gender == 'F') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
-    test_female_old_black = data[(data.gender == 'F') & (data.anchor_age >= MIN_OLD) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
-    test_female_old_white = data[(data.gender == 'F') & (data.anchor_age >= MIN_OLD) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
-    test_male_young_black = data[(data.gender == 'M') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
-    test_male_young_white = data[(data.gender == 'M') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
-    test_male_old_black = data[(data.gender == 'M') & (data.anchor_age >= MIN_OLD) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
-    test_male_old_white = data[(data.gender == 'M') & (data.anchor_age >= MIN_OLD) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
-
-    # Agglomerate test sets to the following subgroups with n = 500 samples:
-    # female young
-    # female old
-    # female black
-    # female white
-    # male young
-    # male old
-    # male black
-    # male white
-    # young black
-    # young white
-    # old black
-    # old white
-    test_female_young = pd.concat([test_female_young_black, test_female_young_white]).sample(frac=1, random_state=SEED)
-    test_female_old = pd.concat([test_female_old_black, test_female_old_white]).sample(frac=1, random_state=SEED)
-    test_female_black = pd.concat([test_female_young_black, test_female_old_black]).sample(frac=1, random_state=SEED)
-    test_female_white = pd.concat([test_female_young_white, test_female_old_white]).sample(frac=1, random_state=SEED)
-    test_male_young = pd.concat([test_male_young_black, test_male_young_white]).sample(frac=1, random_state=SEED)
-    test_male_old = pd.concat([test_male_old_black, test_male_old_white]).sample(frac=1, random_state=SEED)
-    test_male_black = pd.concat([test_male_young_black, test_male_old_black]).sample(frac=1, random_state=SEED)
-    test_male_white = pd.concat([test_male_young_white, test_male_old_white]).sample(frac=1, random_state=SEED)
-    test_young_black = pd.concat([test_male_young_black, test_female_young_black]).sample(frac=1, random_state=SEED)
-    test_young_white = pd.concat([test_male_young_white, test_female_young_white]).sample(frac=1, random_state=SEED)
-    test_old_black = pd.concat([test_male_old_black, test_female_old_black]).sample(frac=1, random_state=SEED)
-    test_old_white = pd.concat([test_male_old_white, test_female_old_white]).sample(frac=1, random_state=SEED)
-
-    # Agglomerate test sets to the following subgroups with n = 1000 samples:
-    # female
-    # male
-    # young
-    # old
-    # black
-    # white
-    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=SEED)
-    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=SEED)
-    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=SEED)
-    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=SEED)
-    test_black = pd.concat([test_male_black, test_female_black]).sample(frac=1, random_state=SEED)
-    test_white = pd.concat([test_male_white, test_female_white]).sample(frac=1, random_state=SEED)
-
-    test = pd.concat([
-        test_female_young_black,
-        test_female_young_white,
-        test_female_old_black,
-        test_female_old_white,
-        test_male_young_black,
-        test_male_young_white,
-        test_male_old_black,
-        test_male_old_white,
-    ])
-
-    print(f"Overall prevalence: {data.label.mean():.2f}")
-    print(f"Prevalence in female young: {test_female_young.label.mean():.2f}")
-    print(f"Prevalence in female old: {test_female_old.label.mean():.2f}")
-    print(f"Prevalence in female black: {test_female_black.label.mean():.2f}")
-    print(f"Prevalence in female white: {test_female_white.label.mean():.2f}")
-    print(f"Prevalence in male young: {test_male_young.label.mean():.2f}")
-    print(f"Prevalence in male old: {test_male_old.label.mean():.2f}")
-    print(f"Prevalence in male black: {test_male_black.label.mean():.2f}")
-    print(f"Prevalence in male white: {test_male_white.label.mean():.2f}")
-    print(f"Prevalence in young black: {test_young_black.label.mean():.2f}")
-    print(f"Prevalence in young white: {test_young_white.label.mean():.2f}")
-    print(f"Prevalence in old black: {test_old_black.label.mean():.2f}")
-    print(f"Prevalence in old white: {test_old_white.label.mean():.2f}")
-    print(f"Prevalence in female: {test_female.label.mean():.2f}")
-    print(f"Prevalence in male: {test_male.label.mean():.2f}")
-    print(f"Prevalence in young: {test_young.label.mean():.2f}")
-    print(f"Prevalence in old: {test_old.label.mean():.2f}")
-    print(f"Prevalence in black: {test_black.label.mean():.2f}")
-    print(f"Prevalence in white: {test_white.label.mean():.2f}")
-
-    # Rest for training
-    normal = data[data.label == 0]
-    train = normal[~normal.subject_id.isin(test.subject_id)]
-    print(f"\nUsing {len(train)} normal samples for training.")
-    print(f"Average age of training samples: {train.anchor_age.mean():.2f}, std: {train.anchor_age.std():.2f}")
-    print(f"Fraction of female samples in training: {(train.gender == 'F').mean():.2f}")
-    print(f"Fraction of male samples in training: {(train.gender == 'M').mean():.2f}")
-    print(f"Fraction of young samples in training: {(train.anchor_age <= MAX_YOUNG).mean():.2f}")
-    print(f"Fraction of old samples in training: {(train.anchor_age >= MIN_OLD).mean():.2f}")
-    print(f"Fraction of black samples in training: {(train.race == 'Black').mean():.2f}")
-    print(f"Fraction of white samples in training: {(train.race == 'White').mean():.2f}")
-
-    img_data = read_memmap(
-        os.path.join(
-            mimic_cxr_dir,
-            'memmap',
-            'ap_pa_no_support_devices_no_uncertain'),
-    )
-
-    # Return
-    filenames = {}
-    labels = {}
-    meta = {}
-    index_mapping = {}
-    sets = {
-        'train': train,
-        # val
-        'val/male_young': test_male_young,
-        'val/male_old': test_male_old,
-        'val/male_white': test_male_white,
-        'val/male_black': test_male_black,
-        'val/female_young': test_female_young,
-        'val/female_old': test_female_old,
-        'val/female_white': test_female_white,
-        'val/female_black': test_female_black,
-        'val/young_white': test_young_white,
-        'val/young_black': test_young_black,
-        'val/old_white': test_old_white,
-        'val/old_black': test_old_black,
-        'val/male': test_male,
-        'val/female': test_female,
-        'val/young': test_young,
-        'val/old': test_old,
-        'val/white': test_white,
-        'val/black': test_black,
-        # test
-        'test/male_young': test_male_young,
-        'test/male_old': test_male_old,
-        'test/male_white': test_male_white,
-        'test/male_black': test_male_black,
-        'test/female_young': test_female_young,
-        'test/female_old': test_female_old,
-        'test/female_white': test_female_white,
-        'test/female_black': test_female_black,
-        'test/young_white': test_young_white,
-        'test/young_black': test_young_black,
-        'test/old_white': test_old_white,
-        'test/old_black': test_old_black,
-        'test/male': test_male,
-        'test/female': test_female,
-        'test/young': test_young,
-        'test/old': test_old,
-        'test/white': test_white,
-        'test/black': test_black,
-    }
-    for mode, data in sets.items():
-        filenames[mode] = img_data
-        labels[mode] = [min(1, label) for label in data.label.values]
-        meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
-        index_mapping[mode] = data.memmap_idx.values
-    return filenames, labels, meta, index_mapping
-
-
-def load_mimic_cxr_intersectional_age_sex_race_split_equal_prevalence(mimic_cxr_dir: str = MIMIC_CXR_DIR):
-    """Load MIMIC-CXR dataset with intersectional val and test sets."""
-    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
-    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
-    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
 
     # remove patients who have inconsistent documented race information
     # credit to github.com/robintibor
@@ -950,6 +762,194 @@ def load_mimic_cxr_intersectional_age_sex_race_split_equal_prevalence(mimic_cxr_
         'val/old': val_old,
         'val/white': val_white,
         'val/black': val_black,
+        # test
+        'test/male_young': test_male_young,
+        'test/male_old': test_male_old,
+        'test/male_white': test_male_white,
+        'test/male_black': test_male_black,
+        'test/female_young': test_female_young,
+        'test/female_old': test_female_old,
+        'test/female_white': test_female_white,
+        'test/female_black': test_female_black,
+        'test/young_white': test_young_white,
+        'test/young_black': test_young_black,
+        'test/old_white': test_old_white,
+        'test/old_black': test_old_black,
+        'test/male': test_male,
+        'test/female': test_female,
+        'test/young': test_young,
+        'test/old': test_old,
+        'test/white': test_white,
+        'test/black': test_black,
+    }
+    for mode, data in sets.items():
+        filenames[mode] = img_data
+        labels[mode] = [min(1, label) for label in data.label.values]
+        meta[mode] = np.zeros(len(data), dtype=np.float32)  # Unused
+        index_mapping[mode] = data.memmap_idx.values
+    return filenames, labels, meta, index_mapping
+
+
+def load_mimic_cxr_intersectional_age_sex_race_split_unequal_prevalence(mimic_cxr_dir: str = MIMIC_CXR_DIR):
+    """Load MIMIC-CXR dataset with intersectional val and test sets."""
+    csv_dir = os.path.join(THIS_DIR, 'csvs', 'mimic-cxr_ap_pa')
+    normal = pd.read_csv(os.path.join(csv_dir, 'normal.csv'))
+    abnormal = pd.read_csv(os.path.join(csv_dir, 'abnormal.csv'))
+    data = pd.concat([normal, abnormal])
+
+    # remove patients who have inconsistent documented race information
+    # credit to github.com/robintibor
+    admissions_df = pd.read_csv(os.path.join(mimic_cxr_dir, 'admissions.csv'))
+    race_df = admissions_df.loc[:, ['subject_id', 'race']].drop_duplicates()
+    v = race_df.subject_id.value_counts()
+    subject_id_more_than_once = v.index[v.gt(1)]
+    ambiguous_race_df = race_df[race_df.subject_id.isin(subject_id_more_than_once)]
+    inconsistent_race = ambiguous_race_df.subject_id.unique()
+    data = pd.merge(data, race_df, on='subject_id')
+    data = data[~data.subject_id.isin(inconsistent_race)]
+
+    # Only consider white and black patients
+    mask = (data.race.str.contains('BLACK', na=False))
+    data.loc[mask, 'race'] = 'Black'
+    mask = (data.race == 'WHITE')
+    data.loc[mask, 'race'] = 'White'
+    data = data[data.race.isin(['Black', 'White'])]
+
+    # Create test sets for the following subgroups with n = 250 samples:
+    # female young black
+    # female young white
+    # female old black
+    # female old white
+    # male young black
+    # male young white
+    # male old black
+    # male old white
+    n_test = 250
+    test_female_young_black = data[(data.gender == 'F') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
+    test_female_young_white = data[(data.gender == 'F') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
+    test_female_old_black = data[(data.gender == 'F') & (data.anchor_age >= MIN_OLD) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
+    test_female_old_white = data[(data.gender == 'F') & (data.anchor_age >= MIN_OLD) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
+    test_male_young_black = data[(data.gender == 'M') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
+    test_male_young_white = data[(data.gender == 'M') & (data.anchor_age <= MAX_YOUNG) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
+    test_male_old_black = data[(data.gender == 'M') & (data.anchor_age >= MIN_OLD) & (data.race == 'Black')].sample(n=n_test, random_state=SEED)
+    test_male_old_white = data[(data.gender == 'M') & (data.anchor_age >= MIN_OLD) & (data.race == 'White')].sample(n=n_test, random_state=SEED)
+
+    # Agglomerate test sets to the following subgroups with n = 500 samples:
+    # female young
+    # female old
+    # female black
+    # female white
+    # male young
+    # male old
+    # male black
+    # male white
+    # young black
+    # young white
+    # old black
+    # old white
+    test_female_young = pd.concat([test_female_young_black, test_female_young_white]).sample(frac=1, random_state=SEED)
+    test_female_old = pd.concat([test_female_old_black, test_female_old_white]).sample(frac=1, random_state=SEED)
+    test_female_black = pd.concat([test_female_young_black, test_female_old_black]).sample(frac=1, random_state=SEED)
+    test_female_white = pd.concat([test_female_young_white, test_female_old_white]).sample(frac=1, random_state=SEED)
+    test_male_young = pd.concat([test_male_young_black, test_male_young_white]).sample(frac=1, random_state=SEED)
+    test_male_old = pd.concat([test_male_old_black, test_male_old_white]).sample(frac=1, random_state=SEED)
+    test_male_black = pd.concat([test_male_young_black, test_male_old_black]).sample(frac=1, random_state=SEED)
+    test_male_white = pd.concat([test_male_young_white, test_male_old_white]).sample(frac=1, random_state=SEED)
+    test_young_black = pd.concat([test_male_young_black, test_female_young_black]).sample(frac=1, random_state=SEED)
+    test_young_white = pd.concat([test_male_young_white, test_female_young_white]).sample(frac=1, random_state=SEED)
+    test_old_black = pd.concat([test_male_old_black, test_female_old_black]).sample(frac=1, random_state=SEED)
+    test_old_white = pd.concat([test_male_old_white, test_female_old_white]).sample(frac=1, random_state=SEED)
+
+    # Agglomerate test sets to the following subgroups with n = 1000 samples:
+    # female
+    # male
+    # young
+    # old
+    # black
+    # white
+    test_female = pd.concat([test_female_young, test_female_old]).sample(frac=1, random_state=SEED)
+    test_male = pd.concat([test_male_young, test_male_old]).sample(frac=1, random_state=SEED)
+    test_young = pd.concat([test_male_young, test_female_young]).sample(frac=1, random_state=SEED)
+    test_old = pd.concat([test_male_old, test_female_old]).sample(frac=1, random_state=SEED)
+    test_black = pd.concat([test_male_black, test_female_black]).sample(frac=1, random_state=SEED)
+    test_white = pd.concat([test_male_white, test_female_white]).sample(frac=1, random_state=SEED)
+
+    test = pd.concat([
+        test_female_young_black,
+        test_female_young_white,
+        test_female_old_black,
+        test_female_old_white,
+        test_male_young_black,
+        test_male_young_white,
+        test_male_old_black,
+        test_male_old_white,
+    ])
+
+    print(f"Overall prevalence: {data.label.mean():.2f}")
+    print(f"Prevalence in female young: {test_female_young.label.mean():.2f}")
+    print(f"Prevalence in female old: {test_female_old.label.mean():.2f}")
+    print(f"Prevalence in female black: {test_female_black.label.mean():.2f}")
+    print(f"Prevalence in female white: {test_female_white.label.mean():.2f}")
+    print(f"Prevalence in male young: {test_male_young.label.mean():.2f}")
+    print(f"Prevalence in male old: {test_male_old.label.mean():.2f}")
+    print(f"Prevalence in male black: {test_male_black.label.mean():.2f}")
+    print(f"Prevalence in male white: {test_male_white.label.mean():.2f}")
+    print(f"Prevalence in young black: {test_young_black.label.mean():.2f}")
+    print(f"Prevalence in young white: {test_young_white.label.mean():.2f}")
+    print(f"Prevalence in old black: {test_old_black.label.mean():.2f}")
+    print(f"Prevalence in old white: {test_old_white.label.mean():.2f}")
+    print(f"Prevalence in female: {test_female.label.mean():.2f}")
+    print(f"Prevalence in male: {test_male.label.mean():.2f}")
+    print(f"Prevalence in young: {test_young.label.mean():.2f}")
+    print(f"Prevalence in old: {test_old.label.mean():.2f}")
+    print(f"Prevalence in black: {test_black.label.mean():.2f}")
+    print(f"Prevalence in white: {test_white.label.mean():.2f}")
+
+    # Rest for training
+    normal = data[data.label == 0]
+    train = normal[~normal.subject_id.isin(test.subject_id)]
+    print(f"\nUsing {len(train)} normal samples for training.")
+    print(f"Average age of training samples: {train.anchor_age.mean():.2f}, std: {train.anchor_age.std():.2f}")
+    print(f"Fraction of female samples in training: {(train.gender == 'F').mean():.2f}")
+    print(f"Fraction of male samples in training: {(train.gender == 'M').mean():.2f}")
+    print(f"Fraction of young samples in training: {(train.anchor_age <= MAX_YOUNG).mean():.2f}")
+    print(f"Fraction of old samples in training: {(train.anchor_age >= MIN_OLD).mean():.2f}")
+    print(f"Fraction of black samples in training: {(train.race == 'Black').mean():.2f}")
+    print(f"Fraction of white samples in training: {(train.race == 'White').mean():.2f}")
+
+    img_data = read_memmap(
+        os.path.join(
+            mimic_cxr_dir,
+            'memmap',
+            'ap_pa_no_support_devices_no_uncertain'),
+    )
+
+    # Return
+    filenames = {}
+    labels = {}
+    meta = {}
+    index_mapping = {}
+    sets = {
+        'train': train,
+        # val
+        'val/male_young': test_male_young,
+        'val/male_old': test_male_old,
+        'val/male_white': test_male_white,
+        'val/male_black': test_male_black,
+        'val/female_young': test_female_young,
+        'val/female_old': test_female_old,
+        'val/female_white': test_female_white,
+        'val/female_black': test_female_black,
+        'val/young_white': test_young_white,
+        'val/young_black': test_young_black,
+        'val/old_white': test_old_white,
+        'val/old_black': test_old_black,
+        'val/male': test_male,
+        'val/female': test_female,
+        'val/young': test_young,
+        'val/old': test_old,
+        'val/white': test_white,
+        'val/black': test_black,
         # test
         'test/male_young': test_male_young,
         'test/male_old': test_male_old,

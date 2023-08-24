@@ -709,132 +709,132 @@ if __name__ == '__main__':
     """ MIMIC-CXR - Intersectional study (age, sex, and race) """
     h = 4.2
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_intersectional_age_sex_race')
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male", "test/female"],
-            ["test/male", "test/female"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_sex_subgroupAUROC",
-        figsize=(3, h),
-        group_colors=[sns.color_palette()[0]]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
-        subgroup_names=[
-            ["test/old", "test/young"],
-            ["test/old", "test/young"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_age_subgroupAUROC",
-        figsize=(3, h),
-        group_colors=[sns.color_palette()[1]]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/white_subgroupAUROC", "test/black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/white", "test/black"],
-            ["test/white", "test/black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_race_subgroupAUROC",
-        figsize=(3, h),
-        group_colors=[sns.color_palette()[2]]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_old_subgroupAUROC", "test/male_young_subgroupAUROC", "test/male_white_subgroupAUROC", "test/male_black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_age_race_after_male_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=sns.color_palette()[1:3]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/female_old_subgroupAUROC", "test/female_young_subgroupAUROC", "test/female_white_subgroupAUROC", "test/female_black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_age_race_after_female_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=sns.color_palette()[1:3]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_young_subgroupAUROC", "test/female_young_subgroupAUROC", "test/young_white_subgroupAUROC", "test/young_black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
-            ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_sex_race_after_young_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_old_subgroupAUROC", "test/female_old_subgroupAUROC", "test/old_white_subgroupAUROC", "test/old_black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
-            ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
-            ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_sex_race_after_old_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_white_subgroupAUROC", "test/female_white_subgroupAUROC", "test/old_white_subgroupAUROC", "test/young_white_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
-            ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_sex_age_after_white_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=sns.color_palette()[:2]
-    )
-    plot_metric_single(
-        experiment_dir=experiment_dir,
-        metrics=["test/male_black_subgroupAUROC", "test/female_black_subgroupAUROC", "test/old_black_subgroupAUROC", "test/young_black_subgroupAUROC"],
-        subgroup_names=[
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
-            ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
-            ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
-        ],
-        ylabel="subgroupAUROC",
-        plt_name="fae_mimic-cxr_intersectional_sex_age_after_black_subgroupAUROC",
-        plot_groups=(2, 2),
-        figsize=(2.1, h),
-        group_colors=sns.color_palette()[:2]
-    )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_subgroupAUROC", "test/female_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male", "test/female"],
+    #         ["test/male", "test/female"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_subgroupAUROC",
+    #     figsize=(3, h),
+    #     group_colors=[sns.color_palette()[0]]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/old_subgroupAUROC", "test/young_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/old", "test/young"],
+    #         ["test/old", "test/young"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_subgroupAUROC",
+    #     figsize=(3, h),
+    #     group_colors=[sns.color_palette()[1]]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/white_subgroupAUROC", "test/black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/white", "test/black"],
+    #         ["test/white", "test/black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_race_subgroupAUROC",
+    #     figsize=(3, h),
+    #     group_colors=[sns.color_palette()[2]]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_old_subgroupAUROC", "test/male_young_subgroupAUROC", "test/male_white_subgroupAUROC", "test/male_black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_male_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=sns.color_palette()[1:3]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/female_old_subgroupAUROC", "test/female_young_subgroupAUROC", "test/female_white_subgroupAUROC", "test/female_black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_female_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=sns.color_palette()[1:3]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_young_subgroupAUROC", "test/female_young_subgroupAUROC", "test/young_white_subgroupAUROC", "test/young_black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
+    #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_young_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_old_subgroupAUROC", "test/female_old_subgroupAUROC", "test/old_white_subgroupAUROC", "test/old_black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/male_old", "test/male_young", "test/female_old", "test/female_young"],
+    #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
+    #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_old_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_white_subgroupAUROC", "test/female_white_subgroupAUROC", "test/old_white_subgroupAUROC", "test/young_white_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
+    #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_white_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=sns.color_palette()[:2]
+    # )
+    # plot_metric_single(
+    #     experiment_dir=experiment_dir,
+    #     metrics=["test/male_black_subgroupAUROC", "test/female_black_subgroupAUROC", "test/old_black_subgroupAUROC", "test/young_black_subgroupAUROC"],
+    #     subgroup_names=[
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
+    #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
+    #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
+    #     ],
+    #     ylabel="subgroupAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_black_subgroupAUROC",
+    #     plot_groups=(2, 2),
+    #     figsize=(2.1, h),
+    #     group_colors=sns.color_palette()[:2]
+    # )
 
     """ MIMIC-CXR - model size (balanced sex) """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_model_size')
