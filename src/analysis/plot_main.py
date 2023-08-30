@@ -151,7 +151,7 @@ def plot_metric_regression_box_whisker(
         for i, val in enumerate(vals):
             for seed in val:
                 df.append({
-                    'subgroup': subgroup.split('/')[-1].split('_')[0],
+                    'Subgroup': subgroup.split('/')[-1].split('_')[0].capitalize(),
                     ylabel: seed,
                     xlabel: attr_key_values[i]
                 })
@@ -159,7 +159,7 @@ def plot_metric_regression_box_whisker(
 
     # Create plot
     _, ax = plt.subplots(figsize=(6.4, 4.8))
-    sns.boxplot(data=df, x=xlabel, y=ylabel, hue='subgroup', ax=ax)
+    sns.boxplot(data=df, x=xlabel, y=ylabel, hue='Subgroup', ax=ax)
     # Get colors of box plot
     colors = [list(h.get_facecolor()) for h in ax.get_legend_handles_labels()[0]]
 
@@ -314,18 +314,18 @@ def plot_metric_single(
         if plot_group == current_plot_group:
             # Add a nan value to create a gap in the plot
             df.append({
-                'subgroup': " " * current_plot_group,
+                'Subgroup': " " * current_plot_group,
                 ylabel: np.nan,
                 'plot_group': plot_group
             })
             current_plot_group += 1
         # Add the actual data
         vals = data[subgroup]  # shape: (num_attr_key_values, num_seeds)
-        subgroup = ", ".join(subgroup.split("/")[-1].split("_")[:-1])
+        subgroup = ", ".join([s.capitalize() for s in subgroup.split("/")[-1].split("_")[:-1]])
         for val in vals:
             for seed in val:
                 df.append({
-                    'subgroup': subgroup,
+                    'Subgroup': subgroup,
                     ylabel: seed,
                     'plot_group': plot_group
                 })
@@ -336,10 +336,10 @@ def plot_metric_single(
         plot_group_df = df[df['plot_group'] == plot_group]
         # Remove nan values
         plot_group_df = plot_group_df[~plot_group_df[ylabel].isna()]
-        subgroups = plot_group_df['subgroup'].unique()
+        subgroups = plot_group_df['Subgroup'].unique()
         val_mean = None
         for i, subgroup in enumerate(subgroups):
-            cur_mean = plot_group_df[plot_group_df['subgroup'] == subgroup][ylabel].mean()
+            cur_mean = plot_group_df[plot_group_df['Subgroup'] == subgroup][ylabel].mean()
             if val_mean is None:
                 val_mean = cur_mean
             else:
@@ -347,7 +347,7 @@ def plot_metric_single(
 
     # Plot bar plots
     _, ax = plt.subplots(figsize=figsize)
-    sns.barplot(data=df, x='subgroup', y=ylabel, hue='plot_group', dodge=False,
+    sns.barplot(data=df, x='Subgroup', y=ylabel, hue='plot_group', dodge=False,
                 palette=group_colors, ax=ax, errwidth=1.0, capsize=0.15)
     plt.legend([], [], frameon=False)
 
@@ -367,6 +367,7 @@ def plot_metric_single(
 
 if __name__ == '__main__':
     """ MIMIC-CXR sex """
+    print("MIMIC-CXR")
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_sex')
     # plot_metric_regression(
     #     experiment_dir=experiment_dir,
@@ -404,9 +405,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/male", "test/female"],
     #     attr_key='male_percent',
     #     xlabel="Percentage of male subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on MIMIC-CXR for different proportions of male patients in training",
-    #     plt_name="fae_mimic-cxr_sex_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on MIMIC-CXR for different proportions of male patients in training",
+    #     plt_name="fae_mimic-cxr_sex_sAUROC"
     # )
     """ MIMIC-CXR age """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_age')
@@ -446,9 +447,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/old", "test/young"],
     #     attr_key='old_percent',
     #     xlabel="Percentage of old subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on MIMIC-CXR for different proportions of old patients in training",
-    #     plt_name="fae_mimic-cxr_age_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on MIMIC-CXR for different proportions of old patients in training",
+    #     plt_name="fae_mimic-cxr_age_sAUROC"
     # )
     """ MIMIC-CXR race """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_mimic-cxr_race')
@@ -488,12 +489,13 @@ if __name__ == '__main__':
     #     subgroup_names=["test/white", "test/black"],
     #     attr_key='white_percent',
     #     xlabel="Percentage of white subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on MIMIC-CXR for different proportions of white patients in training",
-    #     plt_name="fae_mimic-cxr_race_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on MIMIC-CXR for different proportions of white patients in training",
+    #     plt_name="fae_mimic-cxr_race_sAUROC"
     # )
 
     """ CXR14 sex """
+    print("CXR14")
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_sex')
     # plot_metric_regression(
     #     experiment_dir=experiment_dir,
@@ -531,9 +533,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/male", "test/female"],
     #     attr_key='male_percent',
     #     xlabel="Percentage of male subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on CXR14 for different proportions of male patients in training",
-    #     plt_name="fae_cxr14_sex_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on CXR14 for different proportions of male patients in training",
+    #     plt_name="fae_cxr14_sex_sAUROC"
     # )
     """ CXR14 age """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_cxr14_age')
@@ -573,12 +575,13 @@ if __name__ == '__main__':
     #     subgroup_names=["test/old", "test/young"],
     #     attr_key='old_percent',
     #     xlabel="Percentage of old subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on CXR14 for different proportions of old patients in training",
-    #     plt_name="fae_cxr14_age_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on CXR14 for different proportions of old patients in training",
+    #     plt_name="fae_cxr14_age_sAUROC"
     # )
 
     """ CheXpert sex """
+    print("CheXpert")
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_sex')
     # plot_metric_regression(
     #     experiment_dir=experiment_dir,
@@ -616,9 +619,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/male", "test/female"],
     #     attr_key='male_percent',
     #     xlabel="Percentage of male subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on CheXpert for different proportions of male patients in training",
-    #     plt_name="fae_chexpert_sex_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on CheXpert for different proportions of male patients in training",
+    #     plt_name="fae_chexpert_sex_sAUROC"
     # )
     """ CheXpert age """
     experiment_dir = os.path.join(THIS_DIR, '../../logs/FAE_chexpert_age')
@@ -658,9 +661,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/old", "test/young"],
     #     attr_key='old_percent',
     #     xlabel="Percentage of old subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on CheXpert for different proportions of old patients in training",
-    #     plt_name="fae_chexpert_age_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on CheXpert for different proportions of old patients in training",
+    #     plt_name="fae_chexpert_age_sAUROC"
     # )
 
     """ CheXpert race """
@@ -701,9 +704,9 @@ if __name__ == '__main__':
     #     subgroup_names=["test/white", "test/black"],
     #     attr_key='white_percent',
     #     xlabel="Percentage of white subjects in training set",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on CheXpert for different proportions of white patients in training",
-    #     plt_name="fae_chexpert_race_subgroupAUROC"
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on CheXpert for different proportions of white patients in training",
+    #     plt_name="fae_chexpert_race_sAUROC"
     # )
 
     """ MIMIC-CXR - Intersectional study (age, sex, and race) """
@@ -716,8 +719,8 @@ if __name__ == '__main__':
     #         ["test/male", "test/female"],
     #         ["test/male", "test/female"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_sAUROC",
     #     figsize=(3, h),
     #     group_colors=[sns.color_palette()[0]]
     # )
@@ -728,8 +731,8 @@ if __name__ == '__main__':
     #         ["test/old", "test/young"],
     #         ["test/old", "test/young"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_age_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_sAUROC",
     #     figsize=(3, h),
     #     group_colors=[sns.color_palette()[1]]
     # )
@@ -740,8 +743,8 @@ if __name__ == '__main__':
     #         ["test/white", "test/black"],
     #         ["test/white", "test/black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_race_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_race_sAUROC",
     #     figsize=(3, h),
     #     group_colors=[sns.color_palette()[2]]
     # )
@@ -754,8 +757,8 @@ if __name__ == '__main__':
     #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
     #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_male_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_male_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=sns.color_palette()[1:3]
@@ -769,8 +772,8 @@ if __name__ == '__main__':
     #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
     #         ["test/male_white", "test/male_black", "test/female_white", "test/female_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_female_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_age_race_after_female_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=sns.color_palette()[1:3]
@@ -784,8 +787,8 @@ if __name__ == '__main__':
     #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
     #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_young_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_young_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
@@ -799,8 +802,8 @@ if __name__ == '__main__':
     #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
     #         ["test/old_white", "test/old_black", "test/young_white", "test/young_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_old_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_race_after_old_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=[sns.color_palette()[0], sns.color_palette()[2]]
@@ -814,8 +817,8 @@ if __name__ == '__main__':
     #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
     #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_white_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_white_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=sns.color_palette()[:2]
@@ -829,8 +832,8 @@ if __name__ == '__main__':
     #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
     #         ["test/old_white", "test/young_white", "test/old_black", "test/young_black"],
     #     ],
-    #     ylabel="subgroupAUROC",
-    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_black_subgroupAUROC",
+    #     ylabel="sAUROC",
+    #     plt_name="fae_mimic-cxr_intersectional_sex_age_after_black_sAUROC",
     #     plot_groups=(2, 2),
     #     figsize=(2.1, h),
     #     group_colors=sns.color_palette()[:2]
@@ -844,8 +847,8 @@ if __name__ == '__main__':
     #     subgroup_names=["test/male", "test/female"],
     #     attr_key='male_percent',
     #     xlabel="model size",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on MIMIC-CXR for different model sizes",
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on MIMIC-CXR for different model sizes",
     #     plt_name="fae_mimic-cxr_model_size"
     # )
 
@@ -857,7 +860,7 @@ if __name__ == '__main__':
     #     subgroup_names=["test/male", "test/female"],
     #     attr_key='male_percent',
     #     xlabel="number of training samples",
-    #     ylabel="subgroupAUROC",
-    #     title="FAE subgroupAUROC on MIMIC-CXR for different dataset sizes",
+    #     ylabel="sAUROC",
+    #     title="FAE sAUROC on MIMIC-CXR for different dataset sizes",
     #     plt_name="fae_mimic-cxr_dataset_size"
     # )

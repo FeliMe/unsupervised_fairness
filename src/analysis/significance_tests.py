@@ -19,7 +19,8 @@ def test_metric(
     data, attr_key_values = gather_data_seeds(experiment_dir, attr_key, metrics)
     test_metric_balanced(data, metrics)
     check_pearsson_correlation_coefficient(data, metrics, attr_key_values)
-    compute_mae(data, metrics)
+    experiment = experiment_dir.split('/')[-1]
+    compute_mae(data, metrics, experiment)
 
 
 def test_metric_balanced(
@@ -59,16 +60,19 @@ def test_metric_balanced(
 
 
 def compute_mae(data: Dict[str, np.ndarray],
-                metrics: Tuple[str, str]):
+                metrics: Tuple[str, str],
+                experiment: str):
     """Compute the mean absolute error between the metrics and a linear model"""
+    all_maes = []
     for metric in metrics:
         vals = data[metric]  # Shape: (num_attr_key_values, num_seeds)
         n_vals, n_seeds = vals.shape
-        first = vals[0].mean()
-        last = vals[-1].mean()
-        pred = np.linspace(first, last, num=n_vals)
-        mae = np.abs(pred[:, None] - vals)[1:-1].mean()
-        print(f"MAE of linear interpolation of {metric}: {mae:.6f}")
+        pred = np.linspace(vals[0], vals[-1], num=n_vals)
+        maes = np.abs(pred - vals)[1:-1].mean(0)
+        all_maes.append(maes)
+        print(f"MAE of linear interpolation of {metric}: {maes.mean():.6f}, std: {maes.std():.6f}")
+    os.makedirs("logs/maes", exist_ok=True)
+    np.save(f"logs/maes/{experiment}_maes.npy", np.concatenate(all_maes))
 
 
 def check_pearsson_correlation_coefficient(data: Dict[str, np.ndarray],

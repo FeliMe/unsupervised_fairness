@@ -552,7 +552,7 @@ def load_mimic_cxr_intersectional_age_sex_race_split(mimic_cxr_dir: str = MIMIC_
     abnormal = pd.merge(abnormal, race_df, on='subject_id')
     abnormal = abnormal[~abnormal.subject_id.isin(inconsistent_race)]
 
-    # Only consider white and black patients
+    # Grouping patients into Black and White
     mask = (normal.race.str.contains('BLACK', na=False))
     normal.loc[mask, 'race'] = 'Black'
     mask = (normal.race == 'WHITE')
@@ -561,17 +561,6 @@ def load_mimic_cxr_intersectional_age_sex_race_split(mimic_cxr_dir: str = MIMIC_
     abnormal.loc[mask, 'race'] = 'Black'
     mask = (abnormal.race == 'WHITE')
     abnormal.loc[mask, 'race'] = 'White'
-    normal = normal[normal.race.isin(['Black', 'White'])]
-    abnormal = abnormal[abnormal.race.isin(['Black', 'White'])]
-
-    print(f"Available {len(normal)} normal samples for training.")
-    print(f"Average age of training samples: {normal.anchor_age.mean():.2f}, std: {normal.anchor_age.std():.2f}")
-    print(f"Fraction of female samples in training: {(normal.gender == 'F').mean():.2f}")
-    print(f"Fraction of male samples in training: {(normal.gender == 'M').mean():.2f}")
-    print(f"Fraction of young samples in training: {(normal.anchor_age <= MAX_YOUNG).mean():.2f}")
-    print(f"Fraction of old samples in training: {(normal.anchor_age >= MIN_OLD).mean():.2f}")
-    print(f"Fraction of black samples in training: {(normal.race == 'Black').mean():.2f}")
-    print(f"Fraction of white samples in training: {(normal.race == 'White').mean():.2f}")
 
     # Split normal images into sets
     normal_male_young_black = normal[(normal.gender == 'M') & (normal.anchor_age <= MAX_YOUNG) & (normal.race == 'Black')]
@@ -728,6 +717,39 @@ def load_mimic_cxr_intersectional_age_sex_race_split(mimic_cxr_dir: str = MIMIC_
     print(f"Fraction of old samples in training: {(train.anchor_age >= MIN_OLD).mean():.2f}")
     print(f"Fraction of black samples in training: {(train.race == 'Black').mean():.2f}")
     print(f"Fraction of white samples in training: {(train.race == 'White').mean():.2f}")
+
+    # import seaborn as sns
+    # import matplotlib.pyplot as plt
+    # plt.rcParams["font.family"] = "Times New Roman"
+    # plt.rcParams["font.size"] = 10
+
+    # # Change gender values from 'F' and 'M' to 'Female' and 'Male'
+    # train.loc[train['gender'] == 'F', 'gender'] = 'Female'
+    # train.loc[train['gender'] == 'M', 'gender'] = 'Male'
+
+    # # Rename column anchor_age
+    # train = train.rename(columns={'anchor_age': 'Age'})
+    # train = train.rename(columns={'gender': 'Gender'})
+    # train = train.rename(columns={'race': 'Race'})
+
+    # # Textwidth is 4.8 inches
+    # fig, ax = plt.subplots(1, 2, figsize=(4.8, 2.5))
+    # sns.boxplot(data=train, x='Race', y='Age', hue='Gender', ax=ax[0])
+    # ax[0].set_ylim(0, 100)
+    # ax[0].set_title('(a)')
+    # ax[0].set_xlabel('')
+    # ax[0].set_ylabel('Age (years)')
+    # ax[0].legend(loc='lower center', ncol=2)
+
+    # # Now two plots side by side
+    # sns.countplot(data=train, x='Race', hue='Gender', ax=ax[1])
+    # ax[1].set_title('(b)')
+    # ax[1].set_xlabel('')
+    # ax[1].legend(loc='best', ncol=1)
+    # plt.tight_layout()
+    # plt.savefig('mimic_cxr_intersectional_dist.pdf')
+    # plt.close()
+    # exit()
 
     img_data = read_memmap(
         os.path.join(
