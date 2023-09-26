@@ -337,5 +337,5 @@ def load_cxr14_age_split(cxr14_dir: str = CXR14_DIR,
 
 
 if __name__ == '__main__':
-    # prepare_cxr14()
+    prepare_cxr14()
     pass

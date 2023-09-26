@@ -27,7 +27,7 @@ parser.add_argument('--experiment_name', type=str, default='')
 
 # Data settings
 parser.add_argument('--dataset', type=str, default='mimic-cxr',
-                    choices=['rsna', 'mimic-cxr', 'cxr14', 'chexpert'])
+                    choices=['mimic-cxr', 'cxr14', 'chexpert'])
 parser.add_argument('--protected_attr', type=str, default='sex',
                     choices=['none', 'age', 'sex', 'race', 'intersectional_age_sex_race'])
 parser.add_argument('--male_percent', type=float, default=0.5)
@@ -59,7 +59,7 @@ parser.add_argument(
 parser.add_argument('--lr', type=float, default=2e-4, help='Learning rate')
 parser.add_argument('--weight_decay', type=float, default=0.0,
                     help='Weight decay')
-parser.add_argument('--max_steps', type=int, default=8000,  # 10000
+parser.add_argument('--max_steps', type=int, default=10000,
                     help='Number of training steps')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
@@ -68,7 +68,6 @@ parser.add_argument('--model_type', type=str, default='FAE',
                     choices=['FAE', 'RD'])
 # FAE settings
 parser.add_argument('--fae_hidden_dims', type=int, nargs='+',
-                    # default=[100, 150, 200, 300],
                     default=[100, 150, 200, 250, 300],
                     help='Autoencoder hidden dimensions')
 parser.add_argument('--dropout', type=float, default=0.1, help='Dropout rate')
@@ -88,7 +87,6 @@ if config.debug:
     config.num_workers = 0
     config.max_steps = 1
     config.val_frequency = 1
-    # config.val_steps = 1
     config.log_frequency = 1
 
 
@@ -276,12 +274,6 @@ def validate(config, model, loader, step, log_imgs=False):
     log_msg = "\n".join([f'{k}: {v:.4f}' for k, v in results.items()])
     log_msg += "\n"
     print(log_msg)
-
-    # Save checkpoint
-    # if not config.debug:
-    #     ckpt_name = os.path.join(log_dir, 'ckpt_last.pth')
-    #     print(f'Saving checkpoint to {ckpt_name}')
-    #     save_checkpoint(ckpt_name, model, step, vars(config))
 
     return results
 

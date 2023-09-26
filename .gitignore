@@ -1,7 +1,8 @@
 __pycache__/
 **tester.py
 **tester.ipynb
-run_*.sh
+run_FAE.sh
+run_RD.sh
 .vscode/
 *.egg-info
 logs
@@ -11,3 +12,4 @@ src/analysis/**/*.png
 src/analysis/**/*.pdf
 src/analysis/**/*.svg
 src/analysis/**/*.jpg
+src/analysis/compare_resolutions.py

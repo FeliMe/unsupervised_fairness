@@ -1,10 +1,12 @@
 """This script is used to check for statistical significance"""
 import os
+from glob import glob
 from typing import Dict, Tuple
 
 import numpy as np
 from scipy import stats
 
+from src import LOG_DIR
 from src.analysis.utils import gather_data_seeds
 
 
@@ -16,10 +18,10 @@ def test_metric(
         attr_key: str,
         metrics: Tuple[str, str]):
     """Perform different statistical tests on data"""
+    experiment = experiment_dir.split('/')[-1]
     data, attr_key_values = gather_data_seeds(experiment_dir, attr_key, metrics)
     test_metric_balanced(data, metrics)
-    check_pearsson_correlation_coefficient(data, metrics, attr_key_values)
-    experiment = experiment_dir.split('/')[-1]
+    check_pearsson_correlation_coefficient(data, metrics, attr_key_values, experiment)
     compute_mae(data, metrics, experiment)
 
 
@@ -71,19 +73,41 @@ def compute_mae(data: Dict[str, np.ndarray],
         maes = np.abs(pred - vals)[1:-1].mean(0)
         all_maes.append(maes)
         print(f"MAE of linear interpolation of {metric}: {maes.mean():.6f}, std: {maes.std():.6f}")
-    os.makedirs("logs/maes", exist_ok=True)
-    np.save(f"logs/maes/{experiment}_maes.npy", np.concatenate(all_maes))
+    os.makedirs(f"{LOG_DIR}/maes", exist_ok=True)
+    np.save(f"{LOG_DIR}/maes/{experiment}_maes.npy", np.concatenate(all_maes))
 
 
 def check_pearsson_correlation_coefficient(data: Dict[str, np.ndarray],
                                            metrics: Tuple[str, str],
-                                           attr_key_values: np.ndarray):
+                                           attr_key_values: np.ndarray,
+                                           experiment: str):
     """Checks the pearsson correlation coefficient between the results."""
+    all_corrs = []
     for metric in metrics:
         y = data[metric]
-        x = attr_key_values[:, None].repeat(y.shape[1], axis=1)
-        corr, p_value = stats.pearsonr(x.flatten(), y.flatten())
-        print(f"Pearsson correlation coefficient of {metric}: {corr}")
+        corrs = []
+        for y_ in y.T:
+            corr = abs(stats.pearsonr(attr_key_values, y_)[0])
+            corrs.append(corr)
+            all_corrs.append(corr)
+        print(f"Pearson correlation coefficient of {metric}: {np.mean(corrs):.3f}, +/- {np.std(corrs):.3f}")
+    os.makedirs(f"{LOG_DIR}/corr_coefs", exist_ok=True)
+    np.save(f"{LOG_DIR}/corr_coefs/{experiment}_corr_coefs.npy", np.array(all_corrs))
+
+
+def compute_corr_coefs_per_attribute():
+    corr_coef_files = glob(os.path.join(LOG_DIR, 'corr_coefs', '*.npy'))
+
+    attrs = ['sex', 'age', 'race']
+
+    for attr in attrs:
+        corr_coefs_ds = []
+        files = [f for f in corr_coef_files if attr.lower() in f.lower()]
+        for file in files:
+            corr_coefs = np.load(file)
+            corr_coefs_ds.append(corr_coefs)
+        corr_coefs_ds = np.concatenate(corr_coefs_ds)
+        print(f"{attr}: {corr_coefs_ds.mean():.3f} +/- {corr_coefs_ds.std():.3f}")
 
 
 if __name__ == '__main__':
@@ -141,3 +165,5 @@ if __name__ == '__main__':
         metrics=["test/young_subgroupAUROC", "test/old_subgroupAUROC"],
         attr_key='old_percent',
     )
+
+    compute_corr_coefs_per_attribute()

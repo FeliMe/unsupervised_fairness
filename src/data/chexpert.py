@@ -499,5 +499,5 @@ def load_chexpert_race_split(chexpert_dir: str = CHEXPERT_DIR,
 
 
 if __name__ == '__main__':
-    # prepare_chexpert()
+    prepare_chexpert()
     pass

@@ -1124,5 +1124,5 @@ def load_mimic_cxr_intersectional_age_sex_split(mimic_cxr_dir: str = MIMIC_CXR_D
 
 
 if __name__ == '__main__':
-    # prepare_mimic_cxr()
+    prepare_mimic_cxr()
     pass

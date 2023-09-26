@@ -6,7 +6,7 @@ from torch import Generator, Tensor
 from torch.utils.data import DataLoader, Dataset, default_collate
 from torchvision import transforms
 
-from src import CHEXPERT_DIR, CXR14_DIR, MIMIC_CXR_DIR, RSNA_DIR
+from src import CHEXPERT_DIR, CXR14_DIR, MIMIC_CXR_DIR
 from src.data.chexpert import (load_chexpert_age_split,
                                load_chexpert_naive_split,
                                load_chexpert_race_split,
@@ -14,15 +14,11 @@ from src.data.chexpert import (load_chexpert_age_split,
 from src.data.cxr14 import (load_cxr14_age_split,
                             load_cxr14_naive_split,
                             load_cxr14_sex_split)
-from src.data.data_utils import load_dicom_img
 from src.data.mimic_cxr import (load_mimic_cxr_age_split,
                                 load_mimic_cxr_intersectional_age_sex_race_split,
                                 load_mimic_cxr_naive_split,
                                 load_mimic_cxr_race_split,
                                 load_mimic_cxr_sex_split)
-from src.data.rsna_pneumonia_detection import (load_rsna_age_two_split,
-                                               load_rsna_gender_split,
-                                               load_rsna_naive_split)
 
 
 class NormalDataset(Dataset):
@@ -38,7 +34,7 @@ class NormalDataset(Dataset):
             meta: List[int],
             transform=None,
             index_mapping: Optional[List[int]] = None,
-            load_fn: Callable = load_dicom_img):
+            load_fn: Callable = lambda x: x):
         """
         :param filenames: Paths to training images
         :param labels: Class labels (0 == normal, other == anomaly)
@@ -84,7 +80,7 @@ class AnomalFairnessDataset(Dataset):
             meta: Dict[str, List[int]],
             transform=None,
             index_mapping: Optional[Dict[str, List[int]]] = None,
-            load_fn: Callable = load_dicom_img):
+            load_fn: Callable = lambda x: x):
         """
         :param filenames: Paths to images for each subgroup
         :param labels: Class labels for each subgroup (0 == normal, other == anomaly)
@@ -132,25 +128,12 @@ def get_dataloaders(dataset: str,
                     white_percent: Optional[float] = 0.5,
                     max_train_samples: Optional[int] = None) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """
-    Returns dataloaders for the RSNA dataset.
+    Returns dataloaders for the desired dataset.
     """
     print(f'Loading dataset {dataset} with protected attribute {protected_attr}')
 
     # Load filenames and labels
-    if dataset == 'rsna':
-        load_fn = load_dicom_img
-        if protected_attr == 'none':
-            data, labels, meta, idx_map = load_rsna_naive_split(
-                RSNA_DIR, max_train_samples=max_train_samples)
-        elif protected_attr == 'age':
-            data, labels, meta, idx_map = load_rsna_age_two_split(
-                RSNA_DIR, old_percent=old_percent, max_train_samples=max_train_samples)
-        elif protected_attr == 'sex':
-            data, labels, meta, idx_map = load_rsna_gender_split(
-                RSNA_DIR, male_percent=male_percent, max_train_samples=max_train_samples)
-        else:
-            raise ValueError(f'Unknown protected attribute: {protected_attr} for dataset {dataset}')
-    elif dataset == 'cxr14':
+    if dataset == 'cxr14':
         def load_fn(x):
             return torch.tensor(x)
         if protected_attr == 'none':
